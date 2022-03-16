@@ -12,6 +12,16 @@ def get_args():
 
     args = parser.parse_args()
 
+    args_dict = vars(args)
+
+    # Change all arguments that are lists into either single values or tuples.
+    for k, v in args_dict.items():
+        if isinstance(v, list):
+            if len(v) == 1:
+                setattr(args, k, v[0])
+            else:
+                setattr(args, k, tuple(v))
+
     return args
 
 
@@ -33,8 +43,8 @@ def add_model_config_args(parser):
                         help='Use relative position bias in the encoder')
     group.set_defaults(rel_pos_bias=False)
 
-    group.add_argument('--abs_pos_bias', action='store_true',
-                        help='Use absolute position bias in the encoder')
+    group.add_argument('--abs_pos_emb', action='store_true',
+                        help='Use absolute position emb in the encoder')
     group.set_defaults(abs_pos_bias=False)
 
     group.add_argument('--qkv_bias', action='store_true',
@@ -103,7 +113,7 @@ def add_optimizer_config_args(parser):
 
     group.add_argument('--weight_decay', type=float, default=0.05,
                         help='weight decay (default: 0.05)')
-    group.add_argument('--lr', type=float, default=None, metavar='LR',
+    group.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                         help='learning rate (absolute lr)')
     group.add_argument('--min_lr', type=float, default=0., metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0')
@@ -117,6 +127,8 @@ def add_misc_config_args(parser):
     group.add_argument('--seed', type=int, default=13, help='Random seed for determinstic training')
     group.add_argument('--no_cuddn_auto_tuner', action='store_true', help='Disables the CUDDN benchmark in PyTorch')
     group.add_argument('--anomaly_detection', action='store_true', help='Enables PyTorch anomaly detection')
+    parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
+                        help='start epoch')
     group.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
     group.add_argument('--save_ckpt_freq', default=20, type=int)
     group.add_argument('--val_interval', default=20, type=int)

@@ -205,7 +205,7 @@ class UNETR(nn.Module):
         self.patch_size = self.encoder.patch_size
         self.output_dim = output_dim
 
-        self.patch_dim = [int(x / self.patch_size) for x in self.vol_size]
+        self.patch_dim = [int(x / y) for x, y in zip(self.vol_size, self.patch_size)]
 
         # U-Net Decoder
         self.decoder0 = \

@@ -24,7 +24,7 @@ from utils.arguments import get_args
 def main(cfg):
     # -- Initialize distributed mode and hardware --
     misc.init_distributed_mode(cfg)
-    torch.backend.cudnn.benchmark = True
+    torch.backends.cudnn.benchmark = True
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # -- Fix the seed for reproducibility --
@@ -41,7 +41,7 @@ def main(cfg):
         log_writer = SummaryWriter(logdir=cfg.log_dir)
     else:
         log_writer = None
-    if misc.get_rank() == 0:
+    if misc.get_rank() == 1:
         neptune_logger = neptune.init()
         neptune_logger['parameters'] = cfg_dict
 
@@ -75,6 +75,9 @@ def main(cfg):
 
     # Setup model
     model = build_model(cfg)
+    model.to(device)
+    model_without_ddp = model
+    print("Model = %s" % str(model_without_ddp))
     if cfg.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[cfg.gpu], find_unused_parameters=True)
         model_without_ddp = model.module

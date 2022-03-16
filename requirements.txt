@@ -4,3 +4,5 @@ tensorboardX
 neptune-client>=0.14.2
 numpy
 timm
+nibabel
+tqdm

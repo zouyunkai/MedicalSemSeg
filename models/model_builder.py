@@ -10,7 +10,7 @@ def build_model(cfg):
                     input_dim=cfg.input_dim,
                     qkv_bias=cfg.qkv_bias,
                     use_abs_pos_emb=cfg.abs_pos_emb,
-                    use_rel_pos_bias=cfg.rel_pos_emb
+                    use_rel_pos_bias=cfg.rel_pos_bias
                      )
     model = UNETR(encoder, output_dim=cfg.output_dim)
     return model
