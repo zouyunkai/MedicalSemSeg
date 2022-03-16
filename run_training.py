@@ -1,44 +1,52 @@
-import torch
-import torch.distributed as dist
-from torch.distributed.elastic.multiprocessing.errors import record
-from tensorboardX import SummaryWriter
-from pathlib import Path
-from utils.arguments import get_args
-import utils.misc as misc
-import numpy as np
-import neptune.new as neptune
+import datetime
+import json
 import os
-from data.dataset_builder import build_training_dataset, build_validation_dataset
-from models.segmentors.builder import build_segmentor
+import time
+from pathlib import Path
+
+import neptune.new as neptune
+import numpy as np
+import timm.optim.optim_factory as optim_factory
+import torch
+from monai.data import DataLoader
+from tensorboardX import SummaryWriter
+from torch.distributed.elastic.multiprocessing.errors import record
+
+import utils.misc as misc
+from data.dataset_builder import build_train_and_val_datasets
+from engine.train import train_one_epoch
+from engine.val import run_validation
+from models.model_builder import build_model
+from utils.arguments import get_args
 
 
-def main(args):
+@record
+def main(cfg):
     # -- Initialize distributed mode and hardware --
-    misc.init_distributed_mode(args)
+    misc.init_distributed_mode(cfg)
     torch.backend.cudnn.benchmark = True
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # -- Fix the seed for reproducibility --
-    seed = args.seed + misc.get_rank()
+    seed = cfg.seed + misc.get_rank()
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # -- Setup config --
-    cfg = misc.read_config(args.config)
-    cfg.update_from_args(args)
+    cfg_dict = vars(cfg)
 
     # -- Enable logging to file and online logging to Neptune --
-    if misc.get_rank() == 0 and args.log_dir is not None:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(logdir=args.log_dir)
+    if misc.get_rank() == 0 and cfg.log_dir is not None:
+        os.makedirs(cfg.log_dir, exist_ok=True)
+        log_writer = SummaryWriter(logdir=cfg.log_dir)
     else:
         log_writer = None
     if misc.get_rank() == 0:
         neptune_logger = neptune.init()
-        neptune_logger['parameters'] = cfg
+        neptune_logger['parameters'] = cfg_dict
 
     # -- Setup data --
-    dataset_train = build_training_dataset(cfg)
-    dataset_val = build_validation_dataset(cfg)
+    dataset_train, dataset_val = build_train_and_val_datasets(cfg)
 
     if cfg.distributed:
         sampler_train = torch.utils.data.DistributedSampler(
@@ -49,26 +57,74 @@ def main(args):
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
 
-    data_loader_train = torch.utils.data.DataLoader(
+    data_loader_train = DataLoader(
         dataset_train, sampler=sampler_train,
-        batch_size=cfg.batch_size,
-        num_workers=cfg.num_workers,
+        batch_size=cfg.batch_size_train,
+        num_workers=cfg.n_workers_train,
         pin_memory=cfg.pin_mem,
         drop_last=True,
     )
 
-    data_loader_val = torch.utils.data.DataLoader(
+    data_loader_val = DataLoader(
         dataset_val, sampler=sampler_val,
-        batch_size=1,
-        num_workers=cfg.num_workers,
+        batch_size=cfg.batch_size_val,
+        num_workers=cfg.n_workers_val,
         pin_memory=cfg.pin_mem,
         drop_last=False,
     )
 
     # Setup model
-    model = build_segmentor(cfg)
+    model = build_model(cfg)
+    if cfg.distributed:
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[cfg.gpu], find_unused_parameters=True)
+        model_without_ddp = model.module
+
+    # following timm: set wd as 0 for bias and norm layers
+    param_groups = optim_factory.add_weight_decay(model_without_ddp, cfg.weight_decay)
+    optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95))
+    print(optimizer)
+    loss_scaler = torch.cuda.amp.GradScaler()
+
+    misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
     # Run training
+    start_time = time.time()
+    for epoch in range(cfg.start_epoch, cfg.epochs):
+        data_loader_train.sampler.set_epoch(epoch)
+        train_stats = train_one_epoch(
+            model, data_loader_train,
+            optimizer, device, epoch,
+            loss_scaler, log_writer=log_writer, cfg=cfg)
+
+        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                     'epoch': epoch, }
+        if not(epoch % cfg.val_interval):
+            val_stats = run_validation(
+                model, data_loader_val,
+                optimizer, device, epoch,
+                log_writer=log_writer, cfg=cfg)
+            log_stats_val = {**{f'val_{k}': v for k, v in val_stats.items()},
+                     'epoch': epoch, }
+            log_stats = {**log_stats, **log_stats_val}
+        if cfg.output_dir and (epoch % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
+            misc.save_model(
+                cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
+                loss_scaler=loss_scaler, epoch=epoch)
+
+
+        if misc.is_main_process():
+            misc.log_to_neptune(neptune_logger, log_stats)
+
+        if cfg.output_dir and misc.is_main_process():
+            if log_writer is not None:
+                log_writer.flush()
+            with open(os.path.join(cfg.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
+                f.write(json.dumps(log_stats) + "\n")
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print('Training time {}'.format(total_time_str))
+    if misc.is_main_process():
+        neptune_logger.stop()
 
 if __name__ == '__main__':
     args = get_args()

@@ -1,0 +1,3 @@
+
+def ScaleCubedIntensityRanged():
+    return

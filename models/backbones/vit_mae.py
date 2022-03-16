@@ -11,17 +11,12 @@
 # https://github.com/microsoft/Swin-Transformer
 # --------------------------------------------------------'
 import math
-import torch
 from functools import partial
+
+import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-
-from timm.models.layers import drop_path, to_2tuple, trunc_normal_
-
-from mmcv_custom import load_checkpoint
-from mmseg.utils import get_root_logger
-from mmseg.models.builder import BACKBONES
+from timm.models.layers import drop_path, to_2tuple, trunc_normal_, to_3tuple
 
 
 class DropPath(nn.Module):
@@ -188,7 +183,7 @@ class PatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
 
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
+    def __init__(self, img_size=224, patch_size=16, in_chans=1, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -209,6 +204,31 @@ class PatchEmbed(nn.Module):
 
         x = x.flatten(2).transpose(1, 2)
         return x, (Hp, Wp)
+
+class PatchEmbed3D(nn.Module):
+    """ Volume to Patch Embedding
+    """
+
+    def __init__(self, vol_size=96, patch_size=8, in_chans=1, embed_dim=768):
+        super().__init__()
+        vol_size = to_3tuple(vol_size)
+        patch_size = to_3tuple(patch_size)
+        self.grid_size =((vol_size[0] // patch_size[0]), (vol_size[1] // patch_size[1]), (vol_size[2] // patch_size[2]))
+        self.num_patches = self.grid_size[0] * self.grid_size[1] * self.grid_size[2]
+        self.vol_size = vol_size
+        self.patch_size = patch_size
+
+        self.proj = nn.Conv3d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
+
+    def forward(self, x):
+        assert x.shape[2] == self.vol_size[0]
+        assert x.shape[3] == self.vol_size[1]
+        assert x.shape[4] == self.vol_size[2]
+        x = self.proj(x)
+        x = x.flatten(2).transpose(1, 2)
+        assert x.shape[1] == self.num_patches
+        return x
+
 
 
 class HybridEmbed(nn.Module):
@@ -285,28 +305,29 @@ class RelativePositionBias(nn.Module):
         return relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
 
 
-@BACKBONES.register_module()
-class ViTMAEv2(nn.Module):
+
+class ViTMAE(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
 
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=80, embed_dim=768, depth=12,
+    def __init__(self, vol_size=96, patch_size=16, in_chans=1, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
-                 drop_path_rate=0., hybrid_backbone=None, norm_layer=None, init_values=None, use_checkpoint=False,
+                 drop_path_rate=0., norm_layer=None, init_values=None, use_checkpoint=False,
                  use_abs_pos_emb=True, use_rel_pos_bias=False, use_shared_rel_pos_bias=False,
-                 out_indices=[3, 5, 7, 11]):
+                 out_indices=[3, 5, 7, 11], input_dim=3):
         super().__init__()
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         self.norm = norm_layer(embed_dim)
-        self.num_classes = num_classes
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
+        self.input_dim = input_dim
+        vol_size = to_3tuple(vol_size)
+        self.vol_size = vol_size
+        patch_size = to_3tuple(patch_size)
+        self.patch_size = patch_size
 
-        if hybrid_backbone is not None:
-            self.patch_embed = HybridEmbed(
-                hybrid_backbone, img_size=img_size, in_chans=in_chans, embed_dim=embed_dim)
-        else:
-            self.patch_embed = PatchEmbed(
-                img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
+        self.patch_embed = PatchEmbed3D(
+            vol_size=vol_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
+
         num_patches = self.patch_embed.num_patches
         self.out_indices = out_indices
 
@@ -339,35 +360,6 @@ class ViTMAEv2(nn.Module):
         # trunc_normal_(self.mask_token, std=.02)
         self.out_indices = out_indices
 
-        if patch_size == 16:
-            self.fpn1 = nn.Sequential(
-                nn.ConvTranspose2d(embed_dim, embed_dim, kernel_size=2, stride=2),
-                nn.SyncBatchNorm(embed_dim),
-                nn.GELU(),
-                nn.ConvTranspose2d(embed_dim, embed_dim, kernel_size=2, stride=2),
-            )
-
-            self.fpn2 = nn.Sequential(
-                nn.ConvTranspose2d(embed_dim, embed_dim, kernel_size=2, stride=2),
-            )
-
-            self.fpn3 = nn.Identity()
-
-            self.fpn4 = nn.MaxPool2d(kernel_size=2, stride=2)
-        elif patch_size == 8:
-            self.fpn1 = nn.Sequential(
-                nn.ConvTranspose2d(embed_dim, embed_dim, kernel_size=2, stride=2),
-            )
-
-            self.fpn2 = nn.Identity()
-
-            self.fpn3 = nn.Sequential(
-                nn.MaxPool2d(kernel_size=2, stride=2),
-            )
-
-            self.fpn4 = nn.Sequential(
-                nn.MaxPool2d(kernel_size=4, stride=4),
-            )
         self.apply(self._init_weights)
         self.fix_init_weight()
 
@@ -422,8 +414,8 @@ class ViTMAEv2(nn.Module):
         return {'pos_embed', 'cls_token'}
 
     def forward_features(self, x):
-        B, C, H, W = x.shape
-        x, (Hp, Wp) = self.patch_embed(x)
+        B, C, H, W, D = x.shape
+        x = self.patch_embed(x)
         batch_size, seq_len, _ = x.size()
 
         cls_tokens = self.cls_token.expand(batch_size, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
@@ -440,12 +432,8 @@ class ViTMAEv2(nn.Module):
             else:
                 x = blk(x, rel_pos_bias)
             if i in self.out_indices:
-                xp = self.norm(x)[:, 1:, :].permute(0, 2, 1).reshape(B, -1, Hp, Wp)
+                xp = self.norm(x)[:, 1:, :]
                 features.append(xp.contiguous())
-
-        ops = [self.fpn1, self.fpn2, self.fpn3, self.fpn4]
-        for i in range(len(features)):
-            features[i] = ops[i](features[i])
 
         return tuple(features)
 

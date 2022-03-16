@@ -1,5 +1,6 @@
 monai
-torch
+torch>=1.9.1
 tensorboardX
-neptune-client
+neptune-client>=0.14.2
 numpy
+timm

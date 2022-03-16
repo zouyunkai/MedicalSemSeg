@@ -6,9 +6,10 @@ def conv3x3x3_bn_relu(in_planes, out_planes, stride=1):
     return nn.Sequential(
             nn.Conv3d(in_planes, out_planes, kernel_size=3,
                       stride=stride, padding=1, bias=False),
-            BatchNorm2d(out_planes),
+            nn.BatchNorm2d(out_planes),
             nn.ReLU(inplace=True),
             )
+
 
 # upernet
 class UPerNet(nn.Module):
@@ -38,7 +39,7 @@ class UPerNet(nn.Module):
         for fpn_inplane in fpn_inplanes[:-1]:   # skip the top layer
             self.fpn_in.append(nn.Sequential(
                 nn.Conv3d(fpn_inplane, fpn_dim, kernel_size=1, bias=False),
-                BatchNorm2d(fpn_dim),
+                nn.BatchNorm2d(fpn_dim),
                 nn.ReLU(inplace=True)
             ))
         self.fpn_in = nn.ModuleList(self.fpn_in)
@@ -63,8 +64,8 @@ class UPerNet(nn.Module):
         for pool_scale, pool_conv in zip(self.ppm_pooling, self.ppm_conv):
             ppm_out.append(pool_conv(nn.functional.interpolate(
                 pool_scale(conv5),
-                (input_size[2], input_size[3]),
-                mode='bilinear', align_corners=False)))
+                (input_size[2], input_size[3], input_size[4]),
+                mode='trilinear', align_corners=False)))
         ppm_out = torch.cat(ppm_out, 1)
         f = self.ppm_last_conv(ppm_out)
 
@@ -86,13 +87,13 @@ class UPerNet(nn.Module):
             fusion_list.append(nn.functional.interpolate(
                 fpn_feature_list[i],
                 output_size,
-                mode='bilinear', align_corners=False))
+                mode='trilinear', align_corners=False))
         fusion_out = torch.cat(fusion_list, 1)
         x = self.conv_last(fusion_out)
 
         if self.use_softmax:  # is True during inference
             x = nn.functional.interpolate(
-                x, size=segSize, mode='bilinear', align_corners=False)
+                x, size=segSize, mode='trilinear', align_corners=False)
             x = nn.functional.softmax(x, dim=1)
             return x
 
