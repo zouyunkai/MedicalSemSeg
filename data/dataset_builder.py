@@ -145,7 +145,7 @@ def build_validation_transforms(cfg):
 
 
 def build_dataset(data_path, transform, dstype='training', cache_num=24, num_workers=8):
-    data_json = os.path.join(data_path, 'dataset.json')
+    data_json = os.path.join(data_path, 'dataset_val.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     dataset = CacheDataset(
         data=data_files,
