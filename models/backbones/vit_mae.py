@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_, to_3tuple
 
+from utils.checkpoint import load_pt_checkpoint
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
@@ -213,8 +214,8 @@ class PatchEmbed3D(nn.Module):
         super().__init__()
         vol_size = to_3tuple(vol_size)
         patch_size = to_3tuple(patch_size)
-        self.grid_size =((vol_size[0] // patch_size[0]), (vol_size[1] // patch_size[1]), (vol_size[2] // patch_size[2]))
-        self.num_patches = self.grid_size[0] * self.grid_size[1] * self.grid_size[2]
+        self.patch_shape =((vol_size[0] // patch_size[0]), (vol_size[1] // patch_size[1]), (vol_size[2] // patch_size[2]))
+        self.num_patches = self.patch_shape[0] * self.patch_shape[1] * self.patch_shape[2]
         self.vol_size = vol_size
         self.patch_size = patch_size
 
@@ -399,8 +400,7 @@ class ViTMAE(nn.Module):
 
         if isinstance(pretrained, str):
             self.apply(_init_weights)
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, strict=False, logger=logger)
+            load_pt_checkpoint(self, pretrained, strict=False)
         elif pretrained is None:
             self.apply(_init_weights)
         else:

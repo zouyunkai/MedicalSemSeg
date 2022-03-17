@@ -135,6 +135,8 @@ def add_misc_config_args(parser):
     group.add_argument('--log_dir', type=str, help='Folder where the logs should be saved')
     group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
     group.add_argument('--resume', default='', help='resume from checkpoint')
+    group.add_argument('--pretrained', type=str, help='Pretrained checkpoint for backbone')
+
     # distributed training parameters
     group.add_argument('--world_size', default=1, type=int,  help='number of distributed processes')
     group.add_argument('--local_rank', default=-1, type=int)

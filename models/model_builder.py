@@ -12,5 +12,6 @@ def build_model(cfg):
                     use_abs_pos_emb=cfg.abs_pos_emb,
                     use_rel_pos_bias=cfg.rel_pos_bias
                      )
+    encoder.init_weights(cfg.pretrained)
     model = UNETR(encoder, output_dim=cfg.output_dim)
     return model
