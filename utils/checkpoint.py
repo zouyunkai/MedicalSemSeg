@@ -1,6 +1,12 @@
 import torch
+from torch.nn.parallel import DistributedDataParallel
+from torch.nn import DataParallel
+
 import os.path as osp
 
+
+def is_module_wrapper(module):
+    return isinstance(module, DistributedDataParallel) or isinstance(module, DataParallel)
 
 def load_pt_checkpoint(model,
                     filename,
