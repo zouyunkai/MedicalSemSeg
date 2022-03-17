@@ -9,11 +9,13 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 from monai.data import DataLoader
+from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
 
 import utils.misc as misc
 from data.dataset_builder import build_train_and_val_datasets
+from data.samplers import DistributedEvalSampler
 from engine.train import train_one_epoch
 from engine.val import run_validation
 from models.model_builder import build_model
@@ -52,10 +54,13 @@ def main(cfg):
         sampler_train = torch.utils.data.DistributedSampler(
             dataset_train, num_replicas=misc.get_world_size(), rank=misc.get_rank(), shuffle=True
         )
-        print("Sampler_train = %s" % str(sampler_train))
+        sampler_val = DistributedEvalSampler(
+            dataset_val, num_replicas=misc.get_world_size(), rank=misc.get_rank(), shuffle=True)
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
-    sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+        sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+    print("Sampler_train = %s" % str(sampler_train))
+    print("Sampler_val = %s" % str(sampler_val))
 
     data_loader_train = DataLoader(
         dataset_train, sampler=sampler_train,
@@ -90,30 +95,34 @@ def main(cfg):
 
     misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
+    criterion = DiceCELoss(to_onehot_y=True, softmax=True)
+
     # Run training
     start_time = time.time()
     for epoch in range(cfg.start_epoch, cfg.epochs):
-        data_loader_train.sampler.set_epoch(epoch)
+        if cfg.distributed:
+            data_loader_train.sampler.set_epoch(epoch)
+            data_loader_val.sampler.set_epoch(epoch)
+
         train_stats = train_one_epoch(
             model, data_loader_train,
-            optimizer, device, epoch,
-            loss_scaler, log_writer=log_writer, cfg=cfg)
-
+            optimizer, criterion, device, epoch,
+            loss_scaler, cfg, log_writer=log_writer)
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }
+
         if not(epoch % cfg.val_interval):
             val_stats = run_validation(
-                model, data_loader_val,
-                optimizer, device, epoch,
+                model, data_loader_val, criterion, device, epoch,
                 log_writer=log_writer, cfg=cfg)
             log_stats_val = {**{f'val_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch, }
             log_stats = {**log_stats, **log_stats_val}
+
         if cfg.output_dir and (epoch % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
             misc.save_model(
                 cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
-
 
         if misc.is_main_process():
             misc.log_to_neptune(neptune_logger, log_stats)
@@ -128,6 +137,7 @@ def main(cfg):
     print('Training time {}'.format(total_time_str))
     if misc.is_main_process():
         neptune_logger.stop()
+
 
 if __name__ == '__main__':
     args = get_args()

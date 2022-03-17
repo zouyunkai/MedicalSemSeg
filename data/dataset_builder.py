@@ -99,9 +99,50 @@ def build_training_transforms(cfg):
     )
     return monai.transforms.Compose(transforms)
 
+
 def build_validation_transforms(cfg):
-    transforms = []
+    transforms = [
+        monai.transforms.LoadImaged(keys=["image", "label"]),
+        monai.transforms.AddChanneld(keys=["image", "label"])
+    ]
+    if cfg.t_voxel_spacings:
+        transforms.append(
+            monai.transforms.Spacingd(
+                keys=["image", "label"],
+                pixdim=cfg.t_voxel_dims,
+                mode=("bilinear", "nearest"),
+            ))
+    if cfg.t_cubed_ct_intensity:
+        transforms.append(
+            ScaleCubedIntensityRanged(
+                keys=["image"],
+                a_min=cfg.t_ct_min,
+                a_max=cfg.t_ct_max,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+        ))
+    else:
+        transforms.append(
+            monai.transforms.ScaleIntensityRanged(
+                keys=["image"],
+                a_min=cfg.t_ct_min,
+                a_max=cfg.t_ct_max,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+        ))
+    if cfg.t_crop_foreground:
+        transforms.append(
+            monai.transforms.CropForegroundd(
+                keys=["image", "label"],
+                source_key="image"
+        ))
+    transforms.append(
+        monai.transforms.ToTensord(keys=["image", "label"])
+    )
     return monai.transforms.Compose(transforms)
+
 
 def build_dataset(data_path, transform, dstype='training', cache_num=24, num_workers=8):
     data_json = os.path.join(data_path, 'dataset.json')
@@ -114,6 +155,7 @@ def build_dataset(data_path, transform, dstype='training', cache_num=24, num_wor
         num_workers=num_workers
     )
     return dataset
+
 
 def build_train_and_val_datasets(cfg):
     train_transform = build_training_transforms(cfg)
