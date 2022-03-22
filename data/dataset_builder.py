@@ -150,14 +150,14 @@ def build_validation_transforms(cfg):
     return monai.transforms.Compose(transforms)
 
 
-def build_dataset(data_path, transform, dstype='training', cache_num=24, num_workers=8):
+def build_dataset(data_path, transform, dstype='training', cache_rate=1.0, cache_num=24, num_workers=8):
     data_json = os.path.join(data_path, 'dataset_val.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     dataset = CacheDataset(
         data=data_files,
         transform=transform,
         cache_num=cache_num,
-        cache_rate=1.0,
+        cache_rate=cache_rate,
         num_workers=num_workers
     )
     return dataset
@@ -165,7 +165,7 @@ def build_dataset(data_path, transform, dstype='training', cache_num=24, num_wor
 
 def build_train_and_val_datasets(cfg):
     train_transform = build_training_transforms(cfg)
-    train_dataset = build_dataset(cfg.data_path, train_transform, dstype='training', cache_num=8, num_workers=cfg.n_workers_train)
+    train_dataset = build_dataset(cfg.data_path, train_transform, dstype='training', num_workers=cfg.n_workers_train)
     val_transform = build_validation_transforms(cfg)
-    val_dataset = build_dataset(cfg.data_path, val_transform, dstype='validation', cache_num=4, num_workers=cfg.n_workers_val)
+    val_dataset = build_dataset(cfg.data_path, val_transform, dstype='validation', num_workers=cfg.n_workers_val)
     return train_dataset, val_dataset

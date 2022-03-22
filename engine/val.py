@@ -19,11 +19,14 @@ def run_validation(
     metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = 'Epoch: [{}]'.format(epoch)
+    #for c in range(cfg.output_dim):
+    #    name = 'class' + str(c) + 'Dice'
+    #    metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    header = 'Validation for epoch: [{}]'.format(epoch)
     print_freq = 20
 
-    post_label = AsDiscrete(to_onehot=14)
-    post_pred = AsDiscrete(argmax=True, to_onehot=14)
+    post_label = AsDiscrete(to_onehot=cfg.output_dim)
+    post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
     dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
     haus_dist_metric = HausdorffDistanceMetric(include_background=True, reduction="mean", get_not_nans=False)
 
@@ -40,7 +43,7 @@ def run_validation(
         with torch.no_grad():
             with torch.cuda.amp.autocast():
                 outputs = sliding_window_inference(inputs, cfg.vol_size, cfg.batch_size_val, model)
-            loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels)
 
         loss_value = loss.item()
 
@@ -72,5 +75,5 @@ def run_validation(
     # gather the stats from all processes
     torch.cuda.synchronize()
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
+    print("Validation averaged stats:", metric_logger)
     return {'val/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}
