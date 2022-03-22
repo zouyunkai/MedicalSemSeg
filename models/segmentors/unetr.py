@@ -211,8 +211,8 @@ class UNETR(nn.Module):
         # U-Net Decoder
         self.decoder0 = \
             nn.Sequential(
-                Conv3DBlock(self.input_dim, 32, self.in_chans),
-                Conv3DBlock(32, 64, self.in_chans)
+                Conv3DBlock(self.in_chans, 32, 3),
+                Conv3DBlock(32, 64, 3)
             )
 
         self.decoder3 = \
