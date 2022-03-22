@@ -81,7 +81,7 @@ def add_transform_config_args(parser):
                        help='Pad volumes to the input volume size')
     group.set_defaults(t_spatial_pad=False)
 
-    group.add_argument('--t_n_samples', default=10, type=int,
+    group.add_argument('--t_n_samples', default=8, type=int,
                        help='The number of sampels for the random cropping')
 
     group.add_argument('--t_flip_prob', default=0.1, type=float,
@@ -102,7 +102,7 @@ def add_data_config_args(parser):
 
     group.add_argument('--data_path', default='/datasets/', type=str,
                         help='Dataset path')
-    group.add_argument('--batch_size_val', type=int, default=4, help='Batch size for validation data loader')
+    group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
     group.add_argument('--batch_size_train', type=int, default=1, help='Batch size for training data loader')
     group.add_argument('--n_workers_train', type=int, default=8, help='Number of workers used in Train DataLoader')
     group.add_argument('--n_workers_val', type=int, default=4, help='Number of workers used in Val DataLoader')

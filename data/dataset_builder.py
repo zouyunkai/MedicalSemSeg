@@ -138,11 +138,11 @@ def build_validation_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
-    if cfg.t_crop_foreground:
+    if cfg.t_spatial_pad:
         transforms.append(
-            monai.transforms.CropForegroundd(
+            monai.transforms.SpatialPadd(
                 keys=["image", "label"],
-                source_key="image"
+                spatial_size=cfg.vol_size,
         ))
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
