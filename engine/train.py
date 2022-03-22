@@ -2,11 +2,10 @@ import math
 import sys
 
 import torch
-from torch import autograd
-
 from monai.data import decollate_batch
-from monai.transforms import AsDiscrete
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
+from monai.transforms import AsDiscrete
+from torch import autograd
 
 import utils.misc as misc
 
@@ -44,6 +43,9 @@ def train_one_epoch(
         with torch.cuda.amp.autocast():
             outputs = model(inputs)
 
+        print("Output shape is {}".format(outputs.shape))
+        print("Output min is {} and max is {}".format(outputs.min(), outputs.max()))
+        print("Output has nan {}".format(any(torch.isnan(outputs))))
         loss = criterion(outputs, labels)
 
         loss_value = loss.item()
