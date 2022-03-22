@@ -14,7 +14,7 @@ def train_one_epoch(
             model, data_loader,
             optimizer, criterion, device, epoch,
             loss_scaler, cfg, log_writer=None):
-    model.train(True)
+    model.train()
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))

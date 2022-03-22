@@ -2,19 +2,18 @@ import math
 import sys
 
 import torch
-from torch import autograd
-
-from monai.inferers import sliding_window_inference
 from monai.data import decollate_batch
-from monai.transforms import AsDiscrete
+from monai.inferers import sliding_window_inference
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
+from monai.transforms import AsDiscrete
+from torch import autograd
 
 import utils.misc as misc
 
 
 def run_validation(
         model, data_loader, criterion, device, epoch, cfg, log_writer=None):
-    model.eval(True)
+    model.eval()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
