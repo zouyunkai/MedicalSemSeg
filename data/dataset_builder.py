@@ -45,7 +45,13 @@ def build_training_transforms(cfg):
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="image"
+                source_key="label"
+        ))
+    if cfg.t_spatial_pad:
+        transforms.append(
+            monai.transforms.SpatialPadd(
+                keys=["image", "label"],
+                spatial_size=cfg.vol_size,
         ))
     transforms.append(
         monai.transforms.RandCropByPosNegLabeld(
@@ -53,7 +59,7 @@ def build_training_transforms(cfg):
             label_key="label",
             spatial_size=cfg.vol_size,
             pos=1,
-            neg=1,
+            neg=0,
             num_samples=cfg.t_n_samples,
             image_key="image",
             image_threshold=0,

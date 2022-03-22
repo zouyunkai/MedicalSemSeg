@@ -23,8 +23,8 @@ def train_one_epoch(
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
-    post_label = AsDiscrete(to_onehot=14)
-    post_pred = AsDiscrete(argmax=True, to_onehot=14)
+    post_label = AsDiscrete(to_onehot=3)
+    post_pred = AsDiscrete(argmax=True, to_onehot=3)
     dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
     haus_dist_metric = HausdorffDistanceMetric(include_background=True, reduction="mean", get_not_nans=False)
 
@@ -43,14 +43,7 @@ def train_one_epoch(
         with torch.cuda.amp.autocast():
             outputs = model(inputs)
 
-
-        print("Output shape is {}".format(outputs.shape))
-        print("Output min is {} and max is {}".format(outputs.min(), outputs.max()))
-        print("Output has nan {}".format(torch.isnan(outputs).any()))
-        print("Input has nan {}".format(torch.isnan(inputs).any()))
-        print("Labels has nan {}".format(torch.isnan(labels).any()))
-
-        loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels)
 
         loss_value = loss.item()
 

@@ -77,6 +77,10 @@ def add_transform_config_args(parser):
                        help='Crop volumes of space that consists of background only')
     group.set_defaults(t_crop_foreground=False)
 
+    group.add_argument('--t_spatial_pad', action='store_true',
+                       help='Pad volumes to the input volume size')
+    group.set_defaults(t_spatial_pad=False)
+
     group.add_argument('--t_n_samples', default=10, type=int,
                        help='The number of sampels for the random cropping')
 

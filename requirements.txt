@@ -6,3 +6,4 @@ numpy
 timm
 nibabel
 tqdm
+scipy
