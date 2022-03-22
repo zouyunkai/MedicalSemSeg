@@ -266,10 +266,14 @@ class UNETR(nn.Module):
     def forward(self, x):
         z = self.encoder(x)
         z0, z3, z6, z9, z12 = x, *z
+        print("Shapes of output from encoder. z0: {}, z3: {}, z6: {}, z9: {}, z12: {}".format(
+            z0.shape, z3.shape, z6.shape, z9.shape, z12.shape))
         z3 = z3.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
         z6 = z6.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
         z9 = z9.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
         z12 = z12.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
+        print("Shapes of output from encoder after view. z0: {}, z3: {}, z6: {}, z9: {}, z12: {}".format(
+            z0.shape, z3.shape, z6.shape, z9.shape, z12.shape))
 
         z12 = self.decoder12_upsampler(z12)
         z9 = self.decoder9(z9)
@@ -279,5 +283,7 @@ class UNETR(nn.Module):
         z3 = self.decoder3(z3)
         z3 = self.decoder3_upsampler(torch.cat([z3, z6], dim=1))
         z0 = self.decoder0(z0)
+        print("Shapes of output after decoder and upsampling. z0: {}, z3: {}, z6: {}, z9: {}, z12: {}".format(
+            z0.shape, z3.shape, z6.shape, z9.shape, z12.shape))
         output = self.decoder0_header(torch.cat([z0, z3], dim=1))
         return output
