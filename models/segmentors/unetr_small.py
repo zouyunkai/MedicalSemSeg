@@ -252,13 +252,13 @@ class UNETRSmall(nn.Module):
     def forward(self, x):
         z = self.encoder(x)
         z0, z4, z8, z12 = x, *z
-        print("Shapes of output from encoder. z0: {}, z4: {}, z8: {}, z12: {}".format(
-            z0.shape, z4.shape, z8.shape, z12.shape))
+        #print("Shapes of output from encoder. z0: {}, z4: {}, z8: {}, z12: {}".format(
+        #    z0.shape, z4.shape, z8.shape, z12.shape))
         z4 = z4.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
         z8 = z8.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
         z12 = z12.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
-        print("Shapes of output after the view. z0: {}, z4: {}, z8: {}, z12: {}".format(
-            z0.shape, z4.shape, z8.shape, z12.shape))
+        #print("Shapes of output after the view. z0: {}, z4: {}, z8: {}, z12: {}".format(
+        #    z0.shape, z4.shape, z8.shape, z12.shape))
 
         z12 = self.decoder12_upsampler(z12)
         z8 = self.decoder8(z8)
@@ -266,7 +266,7 @@ class UNETRSmall(nn.Module):
         z4 = self.decoder4(z4)
         z4 = self.decoder4_upsampler(torch.cat([z4, z8], dim=1))
         z0 = self.decoder0(z0)
-        print("Shapes of output after decoder and upsampling. z0: {}, z4: {}, z8: {}, z12: {}".format(
-            z0.shape, z4.shape, z8.shape, z12.shape))
+        #print("Shapes of output after decoder and upsampling. z0: {}, z4: {}, z8: {}, z12: {}".format(
+        #    z0.shape, z4.shape, z8.shape, z12.shape))
         output = self.decoder0_header(torch.cat([z0, z4], dim=1))
         return output
