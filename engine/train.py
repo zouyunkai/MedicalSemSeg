@@ -43,9 +43,13 @@ def train_one_epoch(
         with torch.cuda.amp.autocast():
             outputs = model(inputs)
 
+
         print("Output shape is {}".format(outputs.shape))
         print("Output min is {} and max is {}".format(outputs.min(), outputs.max()))
         print("Output has nan {}".format(torch.isnan(outputs).any()))
+        print("Input has nan {}".format(torch.isnan(inputs).any()))
+        print("Labels has nan {}".format(torch.isnan(labels).any()))
+
         loss = criterion(outputs, labels)
 
         loss_value = loss.item()
