@@ -1,8 +1,10 @@
-import torch
-from torch.nn.parallel import DistributedDataParallel
-from torch.nn import DataParallel
-
 import os.path as osp
+
+import torch
+from torch.nn import DataParallel
+from torch.nn.parallel import DistributedDataParallel
+
+from utils.misc import is_main_process
 
 
 def is_module_wrapper(module):
@@ -41,7 +43,7 @@ def load_pt_checkpoint(model,
         N1, L, C1 = absolute_pos_embed.size()
         N2, C2, H, W = model.absolute_pos_embed.size()
         if N1 != N2 or C1 != C2 or L != H*W:
-            logger.warning("Error in loading absolute_pos_embed, pass")
+            print("Error in loading absolute_pos_embed, pass")
         else:
             state_dict['absolute_pos_embed'] = absolute_pos_embed.view(N2, H, W, C2).permute(0, 3, 1, 2)
 
@@ -53,7 +55,7 @@ def load_pt_checkpoint(model,
         L1, nH1 = table_pretrained.size()
         L2, nH2 = table_current.size()
         if nH1 != nH2:
-            logger.warning(f"Error in loading {table_key}, pass")
+            print(f"Error in loading {table_key}, pass")
         else:
             if L1 != L2:
                 S1 = int(L1 ** 0.5)
@@ -74,7 +76,7 @@ def load_pt_checkpoint(model,
         new_size = int(num_patches ** 0.5)
         # class_token and dist_token are kept unchanged
         if orig_size != new_size:
-            logger.info("Position interpolate from %dx%d to %dx%d" % (orig_size, orig_size, new_size, new_size))
+            print("Position interpolate from %dx%d to %dx%d" % (orig_size, orig_size, new_size, new_size))
             extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
             # only the position tokens are interpolated
             pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
@@ -143,14 +145,10 @@ def load_state_dict(module, state_dict, strict=False):
         err_msg.append(
             f'missing keys in source state_dict: {", ".join(missing_keys)}\n')
 
-    rank, _ = get_dist_info()
-    if len(err_msg) > 0 and rank == 0:
+    if len(err_msg) > 0 and is_main_process():
         err_msg.insert(
             0, 'The model and loaded state dict do not match exactly\n')
         err_msg = '\n'.join(err_msg)
         if strict:
             raise RuntimeError(err_msg)
-        elif logger is not None:
-            logger.warning(err_msg)
-        else:
-            print(err_msg)
+        print(err_msg)
