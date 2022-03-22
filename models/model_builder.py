@@ -1,5 +1,5 @@
 from models.backbones.vit_mae import ViTMAE
-from models.segmentors.unetr import UNETR
+from models.segmentors.unetr_small import UNETRSmall
 
 
 def build_model(cfg):
@@ -10,8 +10,9 @@ def build_model(cfg):
                     input_dim=cfg.input_dim,
                     qkv_bias=cfg.qkv_bias,
                     use_abs_pos_emb=cfg.abs_pos_emb,
-                    use_rel_pos_bias=cfg.rel_pos_bias
+                    use_rel_pos_bias=cfg.rel_pos_bias,
+                    out_indices=[3, 7, 11]
                      )
     encoder.init_weights(cfg.pretrained)
-    model = UNETR(encoder, in_chans=cfg.in_chans, output_dim=cfg.output_dim)
+    model = UNETRSmall(encoder, in_chans=cfg.in_chans, output_dim=cfg.output_dim)
     return model
