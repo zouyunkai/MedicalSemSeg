@@ -193,7 +193,7 @@ class Transformer(nn.Module):
 
 
 class UNETR(nn.Module):
-    def __init__(self, encoder, output_dim=3):
+    def __init__(self, encoder, in_chans=1, output_dim=3):
         super().__init__()
 
         # Transformer Encoder
@@ -204,14 +204,15 @@ class UNETR(nn.Module):
         self.vol_size = self.encoder.vol_size
         self.patch_size = self.encoder.patch_size
         self.output_dim = output_dim
+        self.in_chans = in_chans
 
         self.patch_dim = [int(x / y) for x, y in zip(self.vol_size, self.patch_size)]
 
         # U-Net Decoder
         self.decoder0 = \
             nn.Sequential(
-                Conv3DBlock(self.input_dim, 32, 3),
-                Conv3DBlock(32, 64, 3)
+                Conv3DBlock(self.input_dim, 32, self.in_chans),
+                Conv3DBlock(32, 64, self.in_chans)
             )
 
         self.decoder3 = \

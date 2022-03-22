@@ -13,5 +13,5 @@ def build_model(cfg):
                     use_rel_pos_bias=cfg.rel_pos_bias
                      )
     encoder.init_weights(cfg.pretrained)
-    model = UNETR(encoder, output_dim=cfg.output_dim)
+    model = UNETR(encoder, in_chans=cfg.in_chans, output_dim=cfg.output_dim)
     return model
