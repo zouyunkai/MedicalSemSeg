@@ -45,7 +45,7 @@ def train_one_epoch(
 
         print("Output shape is {}".format(outputs.shape))
         print("Output min is {} and max is {}".format(outputs.min(), outputs.max()))
-        print("Output has nan {}".format(any(torch.isnan(outputs))))
+        print("Output has nan {}".format(torch.isnan(outputs).any()))
         loss = criterion(outputs, labels)
 
         loss_value = loss.item()
