@@ -19,15 +19,15 @@ def run_validation(
     metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    #for c in range(cfg.output_dim):
-    #    name = 'class' + str(c) + 'Dice'
-    #    metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    for c in range(cfg.output_dim):
+        name = 'class' + str(c) + 'Dice'
+        metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Validation for epoch: [{}]'.format(epoch)
     print_freq = 20
 
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
-    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
+    dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=False)
     haus_dist_metric = HausdorffDistanceMetric(include_background=True, reduction="mean", get_not_nans=False)
 
     if log_writer is not None:
@@ -57,12 +57,15 @@ def run_validation(
         output_convert = [post_pred(pred_tensor) for pred_tensor in outputs_list]
         dice_metric(y_pred=output_convert, y=labels_convert)
         haus_dist_metric(y_pred=output_convert, y=labels_convert)
-        dice_score = dice_metric.aggregate().item()
+        dice_score = dice_metric.aggregate().numpy()
         hdorf_dist = haus_dist_metric.aggregate().item()
 
         metric_logger.update(loss=loss_value)
         metric_logger.update(mHdorffDist=hdorf_dist)
-        metric_logger.update(mDice=dice_score)
+        metric_logger.update(mDice=dice_score.mean())
+        for c in cfg.output_dim:
+            keyword_args = {'class' + str(c) + 'Dice': dice_score[c]}
+            metric_logger.update(**keyword_args)
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         if log_writer is not None:
