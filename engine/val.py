@@ -67,6 +67,9 @@ def run_validation(
             keyword_args = {'class' + str(c) + 'Dice': dice_score[0][c].item()}
             metric_logger.update(**keyword_args)
 
+        dice_metric.reset()
+        hdorf_dist.reset()
+
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         if log_writer is not None:
             """ We use epoch_1000x as the x-axis in tensorboard.

@@ -79,6 +79,9 @@ def train_one_epoch(
             keyword_args = {'class' + str(c) + 'Dice': dice_score[0][c].item()}
             metric_logger.update(**keyword_args)
 
+        dice_metric.reset()
+        hdorf_dist.reset()
+
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
 
