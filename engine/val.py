@@ -57,7 +57,7 @@ def run_validation(
         output_convert = [post_pred(pred_tensor) for pred_tensor in outputs_list]
         dice_metric(y_pred=output_convert, y=labels_convert)
         haus_dist_metric(y_pred=output_convert, y=labels_convert)
-        dice_score = dice_metric.aggregate().numpy()
+        dice_score = dice_metric.aggregate().detach().cpu().numpy()
         hdorf_dist = haus_dist_metric.aggregate().item()
 
         metric_logger.update(loss=loss_value)
