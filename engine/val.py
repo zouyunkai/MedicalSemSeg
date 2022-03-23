@@ -64,7 +64,7 @@ def run_validation(
         metric_logger.update(mHdorffDist=hdorf_dist)
         metric_logger.update(mDice=dice_score.mean().item())
         for c in range(cfg.output_dim):
-            keyword_args = {'class' + str(c) + 'Dice': dice_score[c].item()}
+            keyword_args = {'class' + str(c) + 'Dice': dice_score[0][c].item()}
             metric_logger.update(**keyword_args)
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
