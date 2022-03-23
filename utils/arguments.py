@@ -81,6 +81,16 @@ def add_transform_config_args(parser):
                        help='Pad volumes to the input volume size')
     group.set_defaults(t_spatial_pad=False)
 
+
+    group.add_argument('--t_normalize', action='store_true',
+                       help='Pad volumes to the input volume size')
+    group.set_defaults(t_normalize=False)
+    group.add_argument('--t_norm_mean', default=0.1943, type=float,
+                       help='The probability for a random flip in a direction')
+    group.add_argument('--t_norm_std', default=0.2786, type=float,
+                       help='The probability for a random flip in a direction')
+
+
     group.add_argument('--t_n_samples', default=8, type=int,
                        help='The number of sampels for the random cropping')
 
