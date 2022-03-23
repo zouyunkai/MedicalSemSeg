@@ -28,8 +28,8 @@ def run_validation(
 
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
-    dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=False)
-    haus_dist_metric = HausdorffDistanceMetric(include_background=True, reduction="mean", get_not_nans=False)
+    dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=True)
+    haus_dist_metric = HausdorffDistanceMetric(include_background=True, reduction="mean", get_not_nans=True)
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.logdir))
