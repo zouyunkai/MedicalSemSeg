@@ -1,7 +1,6 @@
 import os
 
 import monai
-import numpy as np
 from monai.data import (
     CacheDataset,
     load_decathlon_datalist,
@@ -70,8 +69,8 @@ def build_training_transforms(cfg):
         transforms.append(
             monai.transforms.NormalizeIntensityd(
                 keys=['image'],
-                subtrahend=np.array(cfg.t_norm_mean),
-                divisor = np.array(cfg.t_norm_std)
+                subtrahend=cfg.t_norm_mean,
+                divisor = cfg.t_norm_std
             )
         )
     transforms.append(
