@@ -107,14 +107,14 @@ def main(cfg):
             model, data_loader_train,
             optimizer, criterion, device, epoch,
             loss_scaler, cfg, log_writer=log_writer)
-        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+        log_stats = {**{f'{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }
 
         if not(epoch % cfg.val_interval):
             val_stats = run_validation(
                 model, data_loader_val, criterion, device, epoch,
                 log_writer=log_writer, cfg=cfg)
-            log_stats_val = {**{f'val_{k}': v for k, v in val_stats.items()},
+            log_stats_val = {**{f'{k}': v for k, v in val_stats.items()},
                      'epoch': epoch, }
             log_stats = {**log_stats, **log_stats_val}
 

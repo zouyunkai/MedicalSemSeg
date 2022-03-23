@@ -5,6 +5,7 @@ import torch
 from monai.data import decollate_batch
 from monai.inferers import sliding_window_inference
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
+from monai.metrics.utils import do_metric_reduction
 from monai.transforms import AsDiscrete
 from torch import autograd
 
@@ -57,15 +58,22 @@ def run_validation(
         output_convert = [post_pred(pred_tensor) for pred_tensor in outputs_list]
         dice_metric(y_pred=output_convert, y=labels_convert)
         haus_dist_metric(y_pred=output_convert, y=labels_convert)
-        dice_score = dice_metric.aggregate().detach().cpu().numpy()
-        hdorf_dist = haus_dist_metric.aggregate().item()
+        dice_scores, dice_not_nans = dice_metric.aggregate()
+        hdorf_dist, hdorf_not_nans = haus_dist_metric.aggregate()
+
+        mDice, _ = do_metric_reduction(dice_scores, reduction='mean')
 
         metric_logger.update(loss=loss_value)
-        metric_logger.update(mHdorffDist=hdorf_dist)
-        metric_logger.update(mDice=dice_score.mean().item())
+        metric_logger.update(mHdorffDist=mDice.item())
+        metric_logger.update(mDice=hdorf_dist.item())
         for c in range(cfg.output_dim):
-            keyword_args = {'class' + str(c) + 'Dice': dice_score[0][c].item()}
-            metric_logger.update(**keyword_args)
+            for c in range(cfg.output_dim):
+                if dice_not_nans[0][c] > 0:
+                    class_dice = dice_scores[0][c].item()
+                else:
+                    class_dice = 0
+                keyword_args = {'class' + str(c) + 'Dice': class_dice}
+                metric_logger.update(**keyword_args)
 
         dice_metric.reset()
         haus_dist_metric.reset()
