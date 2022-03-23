@@ -80,7 +80,7 @@ def train_one_epoch(
             metric_logger.update(**keyword_args)
 
         dice_metric.reset()
-        hdorf_dist.reset()
+        haus_dist_metric.reset()
 
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)

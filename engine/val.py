@@ -68,7 +68,7 @@ def run_validation(
             metric_logger.update(**keyword_args)
 
         dice_metric.reset()
-        hdorf_dist.reset()
+        haus_dist_metric.reset()
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         if log_writer is not None:
