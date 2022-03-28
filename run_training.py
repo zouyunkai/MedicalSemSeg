@@ -42,7 +42,7 @@ def main(cfg):
         log_writer = SummaryWriter(logdir=cfg.log_dir)
     else:
         log_writer = None
-    if misc.get_rank() == 1:
+    if misc.get_rank() == 0:
         neptune_logger = neptune.init()
         neptune_logger['parameters'] = cfg_dict
 
