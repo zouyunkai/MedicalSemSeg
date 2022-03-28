@@ -152,13 +152,21 @@ def build_validation_transforms(cfg):
                 keys=["image", "label"],
                 spatial_size=cfg.vol_size,
         ))
+    if cfg.t_normalize:
+        transforms.append(
+            monai.transforms.NormalizeIntensityd(
+                keys=['image'],
+                subtrahend=cfg.t_norm_mean,
+                divisor = cfg.t_norm_std
+            )
+        )
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
     )
     return monai.transforms.Compose(transforms)
 
 
-def build_dataset(data_path, transform, dstype='training', cache_rate=1.0, cache_num=24, num_workers=8):
+def build_dataset(data_path, transform, dstype='training', cache_rate=0.0, cache_num=24, num_workers=8):
     data_json = os.path.join(data_path, 'dataset_val.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     dataset = CacheDataset(
