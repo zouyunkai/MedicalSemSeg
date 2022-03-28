@@ -55,6 +55,10 @@ def add_model_config_args(parser):
                        help='Sets the gradient clipping to the specified number. Gradient clipping disabled when None')
     group.set_defaults(gradient_clipping=None)
 
+    group.add_argument('--mixed_precision', action='store_true',
+                        help='Use mixed precision for model, operations and input')
+    group.set_defaults(mixed_precision=False)
+
 
     return parser
 

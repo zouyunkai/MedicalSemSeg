@@ -42,7 +42,7 @@ def run_validation(
         labels = labels.to(device, non_blocking=True)
 
         with torch.no_grad():
-            with torch.cuda.amp.autocast():
+            with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
                 outputs = sliding_window_inference(inputs, cfg.vol_size, cfg.batch_size_val, model)
                 loss = criterion(outputs, labels)
 

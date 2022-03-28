@@ -90,7 +90,7 @@ def main(cfg):
     param_groups = optim_factory.add_weight_decay(model_without_ddp, cfg.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95))
     print(optimizer)
-    loss_scaler = torch.cuda.amp.GradScaler()
+    loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision)
 
     misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
