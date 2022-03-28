@@ -17,8 +17,10 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_, to_3tuple
+from torch.cuda.amp import autocast
 
 from utils.checkpoint import load_pt_checkpoint
+
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
@@ -55,6 +57,7 @@ class Mlp(nn.Module):
         return x
 
 
+@autocast(enabled=False)
 class Attention(nn.Module):
     def __init__(
             self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0.,

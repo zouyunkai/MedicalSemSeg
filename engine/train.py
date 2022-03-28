@@ -30,7 +30,7 @@ def train_one_epoch(
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
     dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=True)
-    haus_dist_metric = HausdorffDistanceMetric(include_background=True, reduction="mean", get_not_nans=True)
+    haus_dist_metric = HausdorffDistanceMetric(include_background=True, percentile=95, reduction="mean", get_not_nans=True)
 
     optimizer.zero_grad()
 
@@ -80,8 +80,8 @@ def train_one_epoch(
         mDice, _ = do_metric_reduction(dice_scores, reduction='mean')
 
         metric_logger.update(loss=loss_value)
-        metric_logger.update(mHdorffDist=mDice.item())
-        metric_logger.update(mDice=hdorf_dist.item())
+        metric_logger.update(mHdorffDist=hdorf_dist.item())
+        metric_logger.update(mDice=mDice.item())
         for c in range(cfg.output_dim):
             if dice_not_nans[0][c] > 0:
                 class_dice = dice_scores[0][c].item()
