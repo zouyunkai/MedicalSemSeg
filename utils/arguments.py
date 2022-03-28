@@ -51,6 +51,9 @@ def add_model_config_args(parser):
                         help='Use bias for attention qkv in the encoder')
     group.set_defaults(qkv_bias=False)
 
+    group.add_argument('--gradient_clipping', type=float,
+                       help='Sets the gradient clipping to the specified number. Gradient clipping disabled when None')
+    group.set_defaults(gradient_clipping=None)
 
 
     return parser

@@ -57,6 +57,10 @@ def train_one_epoch(
 
         # Backwards step using loss scaler
         loss_scaler.scale(loss).backward()
+
+        if cfg.gradient_clipping is not None:
+            loss_scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm(model.parameters(), cfg.gradient_clipping)
         loss_scaler.step(optimizer)
         loss_scaler.update()
 
