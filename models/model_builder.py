@@ -2,6 +2,7 @@ from monai.networks.nets import UNETR
 
 from models.backbones.vit_mae import ViTMAE
 from models.segmentors.unetr import UNETRC
+from models.segmentors.unetr_official import UNETROC
 
 
 def build_model(cfg):
@@ -45,16 +46,14 @@ def build_model(cfg):
                         #out_indices=[3, 7, 11]
                          )
         encoder.init_weights(cfg.pretrained)
-        model = UNETR(
+        model = UNETROC(
             encoder,
             in_channels=cfg.in_chans,
             out_channels=cfg.output_dim,
             img_size=cfg.vol_size,
             feature_size=16,
             hidden_size=768,
-            mlp_dim=3072,
             num_heads=12,
-            pos_embed="perceptron",
             norm_name="instance",
             res_block=True,
             dropout_rate=0.0,
