@@ -192,7 +192,7 @@ class Transformer(nn.Module):
         return extract_layers
 
 
-class UNETR(nn.Module):
+class UNETRC(nn.Module):
     def __init__(self, encoder, in_chans=1, output_dim=3):
         super().__init__()
 

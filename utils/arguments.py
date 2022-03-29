@@ -28,6 +28,9 @@ def get_args():
 def add_model_config_args(parser):
     group = parser.add_argument_group('model', 'Model type and settings')
 
+    group.add_argument('--model', default='UNETR_Official', type=str,
+                        help='Model name')
+
     group.add_argument('--vol_size', nargs='*', default=[224], type=int,
                         help='volume input size, can be a single number or for example --input_size 128 64 32 as H*W*D')
     group.add_argument('--patch_size', nargs='*', default=[16], type=int,
