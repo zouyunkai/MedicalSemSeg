@@ -71,7 +71,7 @@ def build_training_transforms(cfg):
             label_key="label",
             spatial_size=cfg.vol_size,
             pos=1,
-            neg=0,
+            neg=1,
             num_samples=cfg.t_n_samples,
             image_key="image",
             image_threshold=0,
