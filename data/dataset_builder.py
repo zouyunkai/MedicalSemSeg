@@ -31,7 +31,7 @@ def build_training_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
-    else:
+    elif cfg.t_fixed_ct_intensity:
         transforms.append(
             monai.transforms.ScaleIntensityRanged(
                 keys=["image"],
@@ -41,6 +41,18 @@ def build_training_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
+    else:
+        transforms.append(
+            monai.transforms.ScaleIntensityRangePercentilesD(
+                keys=['image'],
+                lower=5,
+                upper=95,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+                relative=False
+            )
+        )
     if cfg.t_crop_foreground:
         transforms.append(
             monai.transforms.CropForegroundd(
@@ -136,7 +148,7 @@ def build_validation_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
-    else:
+    elif cfg.t_fixed_ct_intensity:
         transforms.append(
             monai.transforms.ScaleIntensityRanged(
                 keys=["image"],
@@ -145,6 +157,24 @@ def build_validation_transforms(cfg):
                 b_min=0.0,
                 b_max=1.0,
                 clip=True,
+        ))
+    else:
+        transforms.append(
+            monai.transforms.ScaleIntensityRangePercentilesD(
+                keys=['image'],
+                lower=5,
+                upper=95,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+                relative=False
+            )
+        )
+    if cfg.t_crop_foreground:
+        transforms.append(
+            monai.transforms.CropForegroundd(
+                keys=["image", "label"],
+                source_key="label"
         ))
     if cfg.t_spatial_pad:
         transforms.append(
@@ -166,7 +196,7 @@ def build_validation_transforms(cfg):
     return monai.transforms.Compose(transforms)
 
 
-def build_dataset(data_path, transform, dstype='training', cache_rate=0.0, cache_num=24, num_workers=8):
+def build_dataset(data_path, transform, dstype='training', cache_rate=1.0, cache_num=24, num_workers=8):
     data_json = os.path.join(data_path, 'dataset_val.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     dataset = CacheDataset(

@@ -78,6 +78,11 @@ def add_transform_config_args(parser):
     group.add_argument('--t_cubed_ct_intensity', action='store_true',
                        help='Take the cube root of all ct intensity values to make the input space smaller')
     group.set_defaults(t_cubed_ct_intensity=False)
+
+    group.add_argument('--t_fixed_ct_intensity', action='store_true',
+                       help='Clip and normalize ct intensity range to the fixed range between ct min and ct max')
+    group.set_defaults(t_fixed_ct_intensity=False)
+
     group.add_argument('--t_ct_min', default=-1000, type=int,
                         help='The minimum CT intensity value to clip to')
     group.add_argument('--t_ct_max', default=1000, type=int,
@@ -112,7 +117,7 @@ def add_transform_config_args(parser):
 
     group.add_argument('--t_intensity_shift_os', default=0.1, type=float,
                        help='The offset for random intensity shift')
-    group.add_argument('--t_intensity_shift_prob', default=0.1, type=float,
+    group.add_argument('--t_intensity_shift_prob', default=0.5, type=float,
                        help='The probability for a random intensity shift')
 
     return parser

@@ -9,6 +9,7 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 from monai.data import DataLoader
+from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
@@ -96,6 +97,13 @@ def main(cfg):
 
     criterion = DiceCELoss(to_onehot_y=True, softmax=True)
 
+    inferer = SlidingWindowInferer(
+        roi_size=cfg.vol_size,
+        sw_batch_size=cfg.batch_size_val,
+        overlap=0.5,
+        mode='gaussian'
+    )
+
     # Run training
     start_time = time.time()
     for epoch in range(cfg.start_epoch, cfg.epochs):
@@ -111,7 +119,7 @@ def main(cfg):
                      'epoch': epoch, }
 
         if not(epoch % cfg.val_interval):
-            val_stats = run_validation(
+            val_stats = run_validation(inferer,
                 model, data_loader_val, criterion, device, epoch,
                 log_writer=log_writer, cfg=cfg)
             log_stats_val = {**{f'{k}': v for k, v in val_stats.items()},

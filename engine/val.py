@@ -3,7 +3,6 @@ import sys
 
 import torch
 from monai.data import decollate_batch
-from monai.inferers import sliding_window_inference
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
 from monai.metrics.utils import do_metric_reduction
 from monai.transforms import AsDiscrete
@@ -12,7 +11,7 @@ from torch import autograd
 import utils.misc as misc
 
 
-def run_validation(
+def run_validation(inferer,
         model, data_loader, criterion, device, epoch, cfg, log_writer=None):
     model.eval()
 
@@ -43,7 +42,7 @@ def run_validation(
 
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
-                outputs = sliding_window_inference(inputs, cfg.vol_size, cfg.batch_size_val, model)
+                outputs = inferer(inputs=inputs, network=model)
                 loss = criterion(outputs, labels)
 
         loss_value = loss.item()
