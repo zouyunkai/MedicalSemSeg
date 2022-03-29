@@ -77,14 +77,6 @@ def build_training_transforms(cfg):
             image_threshold=0,
         )
     )
-    if cfg.t_normalize:
-        transforms.append(
-            monai.transforms.NormalizeIntensityd(
-                keys=['image'],
-                subtrahend=cfg.t_norm_mean,
-                divisor = cfg.t_norm_std
-            )
-        )
     transforms.append(
         monai.transforms.RandFlipd(
             keys=["image", "label"],
@@ -120,6 +112,14 @@ def build_training_transforms(cfg):
             prob=cfg.t_intensity_shift_prob,
         )
     )
+    if cfg.t_normalize:
+        transforms.append(
+            monai.transforms.NormalizeIntensityd(
+                keys=['image'],
+                subtrahend=cfg.t_norm_mean,
+                divisor = cfg.t_norm_std
+            )
+        )
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
     )

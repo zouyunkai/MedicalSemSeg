@@ -97,11 +97,17 @@ def main(cfg):
 
     criterion = DiceCELoss(to_onehot_y=True, softmax=True)
 
+    if cfg.t_normalize:
+        air_cval = 0.0 - cfg.t_norm_mean
+    else:
+        air_cval = 0.0
+
     inferer = SlidingWindowInferer(
         roi_size=cfg.vol_size,
         sw_batch_size=cfg.batch_size_val,
         overlap=0.5,
-        mode='gaussian'
+        mode='gaussian',
+        cval=air_cval
     )
 
     # Run training
