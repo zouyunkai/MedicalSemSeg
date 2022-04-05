@@ -9,6 +9,7 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 from monai.data import DataLoader
+from monai.data import DistributedSampler
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
@@ -49,7 +50,7 @@ def main(cfg):
 
     # -- Setup data --
     dataset_train, dataset_val = build_train_and_val_datasets(cfg)
-
+    '''
     if cfg.distributed:
         sampler_train = torch.utils.data.DistributedSampler(
             dataset_train, num_replicas=misc.get_world_size(), rank=misc.get_rank(), shuffle=True
@@ -59,11 +60,15 @@ def main(cfg):
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+    
     print("Sampler_train = %s" % str(sampler_train))
     print("Sampler_val = %s" % str(sampler_val))
+    '''
+
+    val_sampler = DistributedSampler(dataset_val, even_divisible=False, shuffle=False)
 
     data_loader_train = DataLoader(
-        dataset_train, sampler=sampler_train,
+        dataset_train,
         batch_size=cfg.batch_size_train,
         num_workers=cfg.n_workers_train,
         pin_memory=cfg.pin_mem,
@@ -71,8 +76,9 @@ def main(cfg):
     )
 
     data_loader_val = DataLoader(
-        dataset_val, sampler=sampler_val,
-        batch_size=cfg.batch_size_val,
+        dataset_val,
+        sampler=val_sampler,
+        batch_size=1,
         num_workers=cfg.n_workers_val,
         pin_memory=cfg.pin_mem,
         drop_last=False,
@@ -98,7 +104,7 @@ def main(cfg):
     criterion = DiceCELoss(to_onehot_y=True, softmax=True)
 
     if cfg.t_normalize:
-        air_cval = 0.0 - cfg.t_norm_mean
+        air_cval = (0.0 - cfg.t_norm_mean)/cfg.t_norm_std
     else:
         air_cval = 0.0
 
@@ -112,6 +118,7 @@ def main(cfg):
 
     # Run training
     start_time = time.time()
+    dataset_train.start()
     for epoch in range(cfg.start_epoch, cfg.epochs):
         if cfg.distributed:
             data_loader_train.sampler.set_epoch(epoch)
@@ -145,11 +152,14 @@ def main(cfg):
                 log_writer.flush()
             with open(os.path.join(cfg.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
+        dataset_train.update_cache()
+    dataset_train.shutdown()
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
     if misc.is_main_process():
         neptune_logger.stop()
+    torch.distributed.destroy_process_group()
 
 
 if __name__ == '__main__':

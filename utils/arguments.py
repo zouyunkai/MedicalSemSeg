@@ -127,7 +127,7 @@ def add_data_config_args(parser):
 
     group.add_argument('--data_path', default='/datasets/', type=str,
                         help='Dataset path')
-    group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
+    group.add_argument('--batch_size_val', type=int, default=8, help='Batch size for validation data loader')
     group.add_argument('--batch_size_train', type=int, default=1, help='Batch size for training data loader')
     group.add_argument('--n_workers_train', type=int, default=8, help='Number of workers used in Train DataLoader')
     group.add_argument('--n_workers_val', type=int, default=4, help='Number of workers used in Val DataLoader')
