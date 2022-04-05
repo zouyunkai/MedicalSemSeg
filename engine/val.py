@@ -23,7 +23,7 @@ def run_validation(inferer,
         name = 'class' + str(c) + 'Dice'
         metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Validation for epoch: [{}]'.format(epoch)
-    print_freq = 20
+    print_freq = 5
 
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
