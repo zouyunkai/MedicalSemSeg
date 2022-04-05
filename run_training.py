@@ -120,7 +120,7 @@ def main(cfg):
     start_time = time.time()
     dataset_train.start()
     for epoch in range(cfg.start_epoch, cfg.epochs):
-        if cfg.distributed:
+        #if cfg.distributed:
             #data_loader_train.sampler.set_epoch(epoch)
             #data_loader_val.sampler.set_epoch(epoch)
 
