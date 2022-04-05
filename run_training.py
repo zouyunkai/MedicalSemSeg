@@ -9,7 +9,6 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 from monai.data import DataLoader
-from monai.data import DistributedSampler
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
@@ -65,7 +64,7 @@ def main(cfg):
     print("Sampler_val = %s" % str(sampler_val))
     '''
 
-    val_sampler = DistributedSampler(dataset_val, even_divisible=False, shuffle=False)
+    #val_sampler = DistributedSampler(dataset_val, even_divisible=False, shuffle=False)
 
     data_loader_train = DataLoader(
         dataset_train,
@@ -77,7 +76,6 @@ def main(cfg):
 
     data_loader_val = DataLoader(
         dataset_val,
-        sampler=val_sampler,
         batch_size=1,
         num_workers=cfg.n_workers_val,
         pin_memory=cfg.pin_mem,
