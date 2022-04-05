@@ -13,6 +13,7 @@ import utils.misc as misc
 
 def run_validation(inferer,
         model, data_loader, criterion, device, epoch, cfg, log_writer=None):
+
     model.eval()
 
     metric_logger = misc.MetricLogger(delimiter="  ")

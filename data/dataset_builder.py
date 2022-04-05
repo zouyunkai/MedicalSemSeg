@@ -3,7 +3,7 @@ import os
 import monai
 from monai.data import (
     SmartCacheDataset,
-    Dataset,
+    CacheDataset,
     load_decathlon_datalist,
     partition_dataset
 )
@@ -212,38 +212,47 @@ def build_validation_transforms(cfg):
     return monai.transforms.Compose(transforms)
 
 
-def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0, cache_num=16, num_workers=4):
+def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0, cache_num=50, num_workers=4):
     data_json = os.path.join(data_path, 'dataset_val.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     if is_main_process():
-        print("Number of files in total dataset: {}".format(len(data_files)))
+        print("Number of files in total training dataset: {}".format(len(data_files)))
 
     data_partition = partition_dataset(data=data_files,
                                        num_partitions=get_world_size(),
                                        shuffle=True,
                                        even_divisible=True)[get_rank()]
-    print("Number of files in dataset partition for rank {}:{}".format(get_rank(), len(data_partition)), force=True)
+    print("Number of files in training dataset partition for rank {}:{}".format(get_rank(), len(data_partition)), force=True)
 
     dataset = SmartCacheDataset(
         data=data_partition,
         transform=transform,
-        replace_rate=0.2,
+        replace_rate=0.04,
         cache_num=cache_num,
         cache_rate=cache_rate,
         num_init_workers=num_workers,
         num_replace_workers=num_workers,
     )
-    print("Number of files in SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
+    print("Number of files in training SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
-def build_val_dataset(data_path, transform, dstype='validation'):
+def build_val_dataset(data_path, transform, dstype='validation', cache_rate=1.0, num_workers=4):
     data_json = os.path.join(data_path, 'dataset_val.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
-
-    dataset = Dataset(
-        data=data_files,
+    if is_main_process():
+        print("Number of files in total validation dataset: {}".format(len(data_files)))
+    data_partition = partition_dataset(data=data_files,
+                                       num_partitions=get_world_size(),
+                                       shuffle=False,
+                                       even_divisible=False)[get_rank()]
+    print("Number of files in validation dataset partition for rank {}:{}".format(get_rank(), len(data_partition)), force=True)
+    dataset = CacheDataset(
+        data=data_partition,
         transform=transform,
+        cache_rate=cache_rate,
+        num_workers=num_workers
     )
+    print("Number of files in validation CacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
 
