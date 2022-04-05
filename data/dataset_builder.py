@@ -222,7 +222,7 @@ def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0,
                                        num_partitions=get_world_size(),
                                        shuffle=True,
                                        even_divisible=True)[get_rank()]
-    print("Number of files in dataset partition for rank {}:{}".format(get_rank(), len(data_partition)))
+    print("Number of files in dataset partition for rank {}:{}".format(get_rank(), len(data_partition)), force=True)
 
     dataset = SmartCacheDataset(
         data=data_partition,
@@ -233,7 +233,7 @@ def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0,
         num_init_workers=num_workers,
         num_replace_workers=num_workers,
     )
-    print("Number of files in SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)))
+    print("Number of files in SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
 def build_val_dataset(data_path, transform, dstype='validation'):

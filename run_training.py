@@ -121,7 +121,7 @@ def main(cfg):
     dataset_train.start()
     for epoch in range(cfg.start_epoch, cfg.epochs):
         if cfg.distributed:
-            data_loader_train.sampler.set_epoch(epoch)
+            #data_loader_train.sampler.set_epoch(epoch)
             #data_loader_val.sampler.set_epoch(epoch)
 
         train_stats = train_one_epoch(
