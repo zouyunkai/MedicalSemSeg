@@ -68,6 +68,7 @@ def build_training_transforms(cfg):
                 keys=["image", "label"],
                 spatial_size=cfg.vol_size,
         ))
+    '''
     transforms.append(
         monai.transforms.RandCropByPosNegLabeld(
             keys=["image", "label"],
@@ -75,6 +76,18 @@ def build_training_transforms(cfg):
             spatial_size=cfg.vol_size,
             pos=1,
             neg=1,
+            num_samples=cfg.t_n_samples,
+            image_key="image",
+            image_threshold=0,
+        )
+    )
+    '''
+    transforms.append(
+        monai.transforms.RandCropByLabelClassesd(
+            keys=["image", "label"],
+            label_key="label",
+            spatial_size=cfg.vol_size,
+            num_classes=cfg.output_dim,
             num_samples=cfg.t_n_samples,
             image_key="image",
             image_threshold=0,
