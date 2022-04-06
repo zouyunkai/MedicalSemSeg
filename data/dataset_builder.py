@@ -2,7 +2,6 @@ import os
 
 import monai
 from monai.data import (
-    SmartCacheDataset,
     CacheDataset,
     load_decathlon_datalist,
     partition_dataset
@@ -212,8 +211,8 @@ def build_validation_transforms(cfg):
     return monai.transforms.Compose(transforms)
 
 
-def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0, cache_num=50, num_workers=4):
-    data_json = os.path.join(data_path, 'dataset_val.json')
+def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0, num_workers=8):
+    data_json = os.path.join(data_path, 'dataset_val_cancer.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     if is_main_process():
         print("Number of files in total training dataset: {}".format(len(data_files)))
@@ -224,20 +223,17 @@ def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0,
                                        even_divisible=True)[get_rank()]
     print("Number of files in training dataset partition for rank {}:{}".format(get_rank(), len(data_partition)), force=True)
 
-    dataset = SmartCacheDataset(
+    dataset = CacheDataset(
         data=data_partition,
         transform=transform,
-        replace_rate=0.04,
-        cache_num=cache_num,
         cache_rate=cache_rate,
-        num_init_workers=num_workers,
-        num_replace_workers=num_workers,
+        num_workers=num_workers,
     )
     print("Number of files in training SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
 def build_val_dataset(data_path, transform, dstype='validation', cache_rate=1.0, num_workers=4):
-    data_json = os.path.join(data_path, 'dataset_val.json')
+    data_json = os.path.join(data_path, 'dataset_val_cancer.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     if is_main_process():
         print("Number of files in total validation dataset: {}".format(len(data_files)))
@@ -260,5 +256,5 @@ def build_train_and_val_datasets(cfg):
     train_transform = build_training_transforms(cfg)
     train_dataset = build_train_dataset(cfg.data_path, train_transform, dstype='training', num_workers=cfg.n_workers_train)
     val_transform = build_validation_transforms(cfg)
-    val_dataset = build_val_dataset(cfg.data_path, val_transform, dstype='validation')
+    val_dataset = build_val_dataset(cfg.data_path, val_transform, dstype='validation', num_workers=cfg.n_workers_val)
     return train_dataset, val_dataset

@@ -116,7 +116,7 @@ def main(cfg):
 
     # Run training
     start_time = time.time()
-    dataset_train.start()
+    #dataset_train.start()
     for epoch in range(cfg.start_epoch, cfg.epochs):
         #if cfg.distributed:
             #data_loader_train.sampler.set_epoch(epoch)
@@ -150,8 +150,8 @@ def main(cfg):
                 log_writer.flush()
             with open(os.path.join(cfg.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
-        dataset_train.update_cache()
-    dataset_train.shutdown()
+        #dataset_train.update_cache()
+    #dataset_train.shutdown()
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
