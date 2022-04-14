@@ -144,12 +144,12 @@ def add_data_config_args(parser):
 def add_optimizer_config_args(parser):
     group = parser.add_argument_group('optimizer', 'Optimzer settings')
 
-    group.add_argument('--weight_decay', type=float, default=0.05,
+    group.add_argument('--weight_decay', type=float, default=1e-5,
                         help='weight decay (default: 0.05)')
-    group.add_argument('--lr', type=float, default=1e-3, metavar='LR',
+    group.add_argument('--lr', type=float, default=4e-4, metavar='LR',
                         help='learning rate (absolute lr)')
-    group.add_argument('--min_lr', type=float, default=0., metavar='LR',
-                        help='lower lr bound for cyclic schedulers that hit 0')
+    group.add_argument('--momentum', type=float, default=0.9,
+                        help='Momentum for optimizer')
     group.add_argument('--warmup_epochs', type=int, default=40, metavar='N',
                         help='epochs to warmup LR')
     return parser

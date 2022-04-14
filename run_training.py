@@ -88,6 +88,7 @@ def main(cfg):
     model_without_ddp = model
     print("Model = %s" % str(model_without_ddp))
     if cfg.distributed:
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[cfg.gpu], find_unused_parameters=True)
         model_without_ddp = model.module
 
@@ -122,7 +123,8 @@ def main(cfg):
     start_time = time.time()
     #dataset_train.start()
     for epoch in range(cfg.start_epoch, cfg.epochs):
-        #if cfg.distributed:
+        if cfg.distributed:
+            torch.distributed.barrier()
             #data_loader_train.sampler.set_epoch(epoch)
             #data_loader_val.sampler.set_epoch(epoch)
 
@@ -134,6 +136,8 @@ def main(cfg):
                      'epoch': epoch, }
 
         if not(epoch % cfg.val_interval):
+            if args.distributed:
+                torch.distributed.barrier()
             val_stats = run_validation(inferer,
                 model, data_loader_val, criterion, device, epoch,
                 log_writer=log_writer, cfg=cfg)

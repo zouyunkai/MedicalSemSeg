@@ -46,7 +46,6 @@ def train_one_epoch(
 
         with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
             outputs = model(inputs)
-
             loss = criterion(outputs, labels)
 
         loss_value = loss.item()
