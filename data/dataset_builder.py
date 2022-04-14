@@ -3,6 +3,7 @@ import os
 import monai
 from monai.data import (
     CacheDataset,
+    Dataset,
     load_decathlon_datalist,
     partition_dataset
 )
@@ -240,7 +241,7 @@ def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0,
     print("Number of files in training SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
-def build_val_dataset(data_path, transform, dstype='validation', cache_rate=1.0, num_workers=4):
+def build_val_cachedataset(data_path, transform, dstype='validation', cache_rate=1.0, num_workers=4):
     data_json = os.path.join(data_path, 'dataset_val_cancer.json')
     data_files = load_decathlon_datalist(data_json, True, dstype)
     if is_main_process():
@@ -259,10 +260,21 @@ def build_val_dataset(data_path, transform, dstype='validation', cache_rate=1.0,
     print("Number of files in validation CacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
+def build_val_dataset(data_path, transform, dstype='validation'):
+    data_json = os.path.join(data_path, 'dataset_val_cancer.json')
+    data_files = load_decathlon_datalist(data_json, True, dstype)
+    if is_main_process():
+        print("Number of files in total validation dataset: {}".format(len(data_files)))
+    dataset = Dataset(
+        data=data_partition,
+        transform=transform,
+    )
+    return dataset
+
 
 def build_train_and_val_datasets(cfg):
     train_transform = build_training_transforms(cfg)
     train_dataset = build_train_dataset(cfg.data_path, train_transform, dstype='training', num_workers=cfg.n_workers_train)
     val_transform = build_validation_transforms(cfg)
-    val_dataset = build_val_dataset(cfg.data_path, val_transform, dstype='validation', num_workers=cfg.n_workers_val)
+    val_dataset = build_val_dataset(cfg.data_path, val_transform, dstype='validation')
     return train_dataset, val_dataset

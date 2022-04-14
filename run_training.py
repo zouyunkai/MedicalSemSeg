@@ -16,6 +16,7 @@ from torch.distributed.elastic.multiprocessing.errors import record
 
 import utils.misc as misc
 from data.dataset_builder import build_train_and_val_datasets
+from data.samplers import DistSampler
 from engine.train import train_one_epoch
 from engine.val import run_validation
 from models.model_builder import build_model
@@ -62,10 +63,10 @@ def main(cfg):
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
     
     print("Sampler_train = %s" % str(sampler_train))
-    print("Sampler_val = %s" % str(sampler_val))
+    
     '''
-
-    #val_sampler = DistributedSampler(dataset_val, even_divisible=False, shuffle=False)
+    val_sampler = DistSampler(dataset_val, shuffle=False) if cfg.distributed else None
+    print("Sampler_val = %s" % str(sampler_val))
 
     data_loader_train = DataLoader(
         dataset_train,
@@ -77,6 +78,7 @@ def main(cfg):
 
     data_loader_val = DataLoader(
         dataset_val,
+        sampler=val_sampler,
         batch_size=1,
         num_workers=cfg.n_workers_val,
         pin_memory=cfg.pin_mem,
@@ -125,9 +127,9 @@ def main(cfg):
     #dataset_train.start()
     for epoch in range(cfg.start_epoch, cfg.epochs):
         if cfg.distributed:
+            data_loader_val.sampler.set_epoch(epoch)
             torch.distributed.barrier()
             #data_loader_train.sampler.set_epoch(epoch)
-            #data_loader_val.sampler.set_epoch(epoch)
 
         train_stats = train_one_epoch(
             model, data_loader_train,
