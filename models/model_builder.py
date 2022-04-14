@@ -63,14 +63,14 @@ def build_model(cfg):
             dropout_rate=0.0,
         )
     elif cfg.model == 'SwinUNETR':
-        encoder = SwinUNETR(
+        encoder = SwinTransformer3D(
             patch_size=cfg.patch_size,
             in_chans=cfg.in_chans,
             embed_dim=48,
             depths=[2, 2, 2, 2],
             num_heads=[3, 6, 12, 24],
             window_size=(6, 6, 6),
-            qkv_bias=True
+            qkv_bias=cfg.qkv_bias
         )
         model = SwinUNETR(
             encoder,
