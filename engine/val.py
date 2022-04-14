@@ -70,7 +70,7 @@ def run_validation(inferer,
             if dice_not_nans[0][c] > 0:
                 class_dice = dice_scores[0][c].item()
             else:
-                class_dice = 0
+                class_dice = None
             keyword_args = {'class' + str(c) + 'Dice': class_dice}
             metric_logger.update(**keyword_args)
 

@@ -68,32 +68,31 @@ def build_training_transforms(cfg):
                 keys=["image", "label"],
                 spatial_size=cfg.vol_size,
         ))
-
-    transforms.append(
-        monai.transforms.RandCropByPosNegLabeld(
-            keys=["image", "label"],
-            label_key="label",
-            spatial_size=cfg.vol_size,
-            pos=1,
-            neg=1,
-            num_samples=cfg.t_n_samples,
-            image_key="image",
-            image_threshold=0,
+    if cfg.t_rand_crop_fgbg:
+        transforms.append(
+            monai.transforms.RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=cfg.vol_size,
+                pos=1,
+                neg=1,
+                num_samples=cfg.t_n_samples,
+                image_key="image",
+                image_threshold=0,
+            )
         )
-    )
-    '''
-    transforms.append(
-        monai.transforms.RandCropByLabelClassesd(
-            keys=["image", "label"],
-            label_key="label",
-            spatial_size=cfg.vol_size,
-            num_classes=cfg.output_dim,
-            num_samples=cfg.t_n_samples,
-            image_key="image",
-            image_threshold=0,
+    elif cfg.t_rand_crop_classes:
+        transforms.append(
+            monai.transforms.RandCropByLabelClassesd(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=cfg.vol_size,
+                num_classes=cfg.output_dim,
+                num_samples=cfg.t_n_samples,
+                image_key="image",
+                image_threshold=0,
+            )
         )
-    )
-    '''
     transforms.append(
         monai.transforms.RandFlipd(
             keys=["image", "label"],
@@ -238,7 +237,7 @@ def build_train_dataset(data_path, transform, dstype='training', cache_rate=1.0,
         cache_rate=cache_rate,
         num_workers=num_workers,
     )
-    print("Number of files in training SmartCacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
+    print("Number of files in training CacheDataset for rank {}:{}".format(get_rank(), len(dataset)), force=True)
     return dataset
 
 def build_val_cachedataset(data_path, transform, dstype='validation', cache_rate=1.0, num_workers=4):

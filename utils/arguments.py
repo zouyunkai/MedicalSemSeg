@@ -91,6 +91,13 @@ def add_transform_config_args(parser):
     group.add_argument('--t_crop_foreground', action='store_true',
                        help='Crop volumes of space that consists of background only')
     group.set_defaults(t_crop_foreground=False)
+    group.add_argument('--t_rand_crop_fgbg', action='store_true',
+                       help='Crop subvolumes based on foreground/background')
+    group.set_defaults(t_rand_crop_fgbg=False)
+    group.add_argument('--t_rand_crop_classes', action='store_true',
+                       help='Crop subvolumes based on classes')
+    group.set_defaults(t_rand_crop_classes=True)
+
 
     group.add_argument('--t_spatial_pad', action='store_true',
                        help='Pad volumes to the input volume size')
