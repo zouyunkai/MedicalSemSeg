@@ -20,6 +20,7 @@ from engine.train import train_one_epoch
 from engine.val import run_validation
 from models.model_builder import build_model
 from utils.arguments import get_args
+from models.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 
 
 @record
