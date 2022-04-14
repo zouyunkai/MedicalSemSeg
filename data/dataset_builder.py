@@ -266,7 +266,7 @@ def build_val_dataset(data_path, transform, dstype='validation'):
     if is_main_process():
         print("Number of files in total validation dataset: {}".format(len(data_files)))
     dataset = Dataset(
-        data=data_partition,
+        data=data_files,
         transform=transform,
     )
     return dataset
