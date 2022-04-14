@@ -88,5 +88,5 @@ def run_validation(inferer,
     # gather the stats from all processes
     torch.cuda.synchronize()
     metric_logger.synchronize_between_processes()
-    print("Validation averaged stats:", metric_logger)
+    print("Validation averaged stats:", metric_logger.log_all_average())
     return {'val/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}

@@ -106,5 +106,5 @@ def train_one_epoch(
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Training averaged stats:", metric_logger)
+    print("Training averaged stats:", metric_logger.log_all_average())
     return {'train/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}
