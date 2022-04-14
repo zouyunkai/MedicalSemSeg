@@ -7,3 +7,4 @@ timm
 nibabel
 tqdm
 scipy
+einops
