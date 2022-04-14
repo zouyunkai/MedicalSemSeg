@@ -65,7 +65,7 @@ def main(cfg):
     print("Sampler_train = %s" % str(sampler_train))
     
     '''
-    val_sampler = DistSampler(dataset_val, shuffle=False) if cfg.distributed else None
+    sampler_val = DistSampler(dataset_val, shuffle=False) if cfg.distributed else None
     print("Sampler_val = %s" % str(sampler_val))
 
     data_loader_train = DataLoader(
@@ -78,7 +78,7 @@ def main(cfg):
 
     data_loader_val = DataLoader(
         dataset_val,
-        sampler=val_sampler,
+        sampler=sampler_val,
         batch_size=1,
         num_workers=cfg.n_workers_val,
         pin_memory=cfg.pin_mem,
