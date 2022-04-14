@@ -66,12 +66,20 @@ class SmoothedValue(object):
         return self.deque[-1]
 
     def __str__(self):
-        return self.fmt.format(
-            median=self.median,
-            avg=self.avg,
-            global_avg=self.global_avg,
-            max=self.max,
-            value=self.value)
+        if self.deque:
+            return self.fmt.format(
+                median=self.median,
+                avg=self.avg,
+                global_avg=self.global_avg,
+                max=self.max,
+                value=self.value)
+        else:
+            return self.fmt.format(
+                median=0.0,
+                avg=0.0,
+                global_avg=0.0,
+                max=0.0,
+                value=0.0)
 
 
 class MetricLogger(object):
