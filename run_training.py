@@ -114,6 +114,10 @@ def main(cfg):
         cval=air_cval
     )
 
+    scheduler = LinearWarmupCosineAnnealingLR(optimizer,
+                                              warmup_epochs=args.warmup_epochs,
+                                              max_epochs=args.epochs)
+
     # Run training
     start_time = time.time()
     #dataset_train.start()
@@ -150,6 +154,8 @@ def main(cfg):
                 log_writer.flush()
             with open(os.path.join(cfg.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
+
+        scheduler.step()
         #dataset_train.update_cache()
     #dataset_train.shutdown()
     total_time = time.time() - start_time

@@ -67,13 +67,12 @@ def run_validation(inferer,
         metric_logger.update(mHdorffDist=hdorf_dist.item())
         metric_logger.update(mDice=mDice.item())
         for c in range(cfg.output_dim):
-            for c in range(cfg.output_dim):
-                if dice_not_nans[0][c] > 0:
-                    class_dice = dice_scores[0][c].item()
-                else:
-                    class_dice = 0
-                keyword_args = {'class' + str(c) + 'Dice': class_dice}
-                metric_logger.update(**keyword_args)
+            if dice_not_nans[0][c] > 0:
+                class_dice = dice_scores[0][c].item()
+            else:
+                class_dice = 0
+            keyword_args = {'class' + str(c) + 'Dice': class_dice}
+            metric_logger.update(**keyword_args)
 
         dice_metric.reset()
         haus_dist_metric.reset()

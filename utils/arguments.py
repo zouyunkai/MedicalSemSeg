@@ -117,7 +117,11 @@ def add_transform_config_args(parser):
 
     group.add_argument('--t_intensity_shift_os', default=0.1, type=float,
                        help='The offset for random intensity shift')
-    group.add_argument('--t_intensity_shift_prob', default=0.5, type=float,
+    group.add_argument('--t_intensity_shift_prob', default=0.1, type=float,
+                       help='The probability for a random intensity shift')
+    group.add_argument('--t_intensity_scale_factors', default=0.1, type=float,
+                       help='The offset for random intensity shift')
+    group.add_argument('--t_intensity_scale_prob', default=0.1, type=float,
                        help='The probability for a random intensity shift')
 
     return parser

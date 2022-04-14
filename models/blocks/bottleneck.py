@@ -3,7 +3,7 @@ import torch.nn as nn
 
 class Bottleneck(nn.Module):
 
-    def __init__(self, inplanes, planes, stride=1, expansion=1, downsample=None):
+    def __init__(self, inplanes, planes, stride=1, padding=1, expansion=1, downsample=None):
 
         super(Bottleneck, self).__init__()
 
@@ -17,7 +17,7 @@ class Bottleneck(nn.Module):
         )
         # Second kernel
         self.conv2 = nn.Sequential(
-            nn.Conv3d(planes, planes, kernel_size=3, padding=1, bias=False),
+            nn.Conv3d(planes, planes, kernel_size=3, padding=padding, bias=False),
             nn.BatchNorm3d(planes),
             nn.ReLU(inplace=True)
         )

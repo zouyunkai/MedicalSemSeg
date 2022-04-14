@@ -59,7 +59,7 @@ def build_training_transforms(cfg):
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="label"
+                source_key="image"
         ))
     if cfg.t_spatial_pad:
         transforms.append(
@@ -67,7 +67,7 @@ def build_training_transforms(cfg):
                 keys=["image", "label"],
                 spatial_size=cfg.vol_size,
         ))
-    '''
+
     transforms.append(
         monai.transforms.RandCropByPosNegLabeld(
             keys=["image", "label"],
@@ -92,6 +92,7 @@ def build_training_transforms(cfg):
             image_threshold=0,
         )
     )
+    '''
     transforms.append(
         monai.transforms.RandFlipd(
             keys=["image", "label"],
@@ -125,6 +126,13 @@ def build_training_transforms(cfg):
             keys=["image"],
             offsets=cfg.t_intensity_shift_os,
             prob=cfg.t_intensity_shift_prob,
+        )
+    )
+    transforms.append(
+        monai.transforms.RandScaleIntensityd(
+            keys=["image"],
+            factors=cfg.t_intensity_scale_factors,
+            prob=cfg.t_intensity_scale_prob,
         )
     )
     if cfg.t_normalize:
