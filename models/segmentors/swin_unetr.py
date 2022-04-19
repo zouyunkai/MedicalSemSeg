@@ -13,7 +13,7 @@ from typing import Sequence, Tuple, Union
 
 import torch.nn as nn
 from monai.networks.blocks.dynunet_block import UnetOutBlock
-from monai.networks.blocks.unetr_block import UnetrBasicBlock, UnetrPrUpBlock, UnetrUpBlock
+from monai.networks.blocks.unetr_block import UnetrBasicBlock, UnetrUpBlock
 from monai.utils import ensure_tuple_rep
 
 from models.blocks.bottleneck import Bottleneck
@@ -53,13 +53,6 @@ for 3D Medical Image Analysis"
             res_block: bool argument to determine if residual block is used.
             dropout_rate: faction of the input units to drop.
             spatial_dims: number of spatial dims.
-        Examples::
-            # for single channel input 4-channel output with image size of (96,96,96), feature size of 32 and batch norm
-            >>> net = UNETR(in_channels=1, out_channels=4, img_size=(96,96,96), feature_size=32, norm_name='batch')
-             # for single channel input 4-channel output with image size of (96,96), feature size of 32 and batch norm
-            >>> net = UNETR(in_channels=1, out_channels=4, img_size=96, feature_size=32, norm_name='batch', spatial_dims=2)
-            # for 4-channel input 3-channel output with image size of (128,128,128), conv position embedding and instance norm
-            >>> net = UNETR(in_channels=4, out_channels=3, img_size=(128,128,128), pos_embed='conv', norm_name='instance')
         """
 
         super().__init__()
