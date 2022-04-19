@@ -8,6 +8,7 @@ def get_args():
     parser = add_data_config_args(parser)
     parser = add_transform_config_args(parser)
     parser = add_optimizer_config_args(parser)
+    parser = add_training_config_args(parser)
     parser = add_misc_config_args(parser)
 
     args = parser.parse_args()
@@ -67,7 +68,7 @@ def add_model_config_args(parser):
 
 
 def add_transform_config_args(parser):
-    group = parser.add_argument_group('data', 'Settings for data, both reading from disk and loading into model')
+    group = parser.add_argument_group('transform', 'Settings for transform, both training and validation')
 
     group.add_argument('--t_voxel_spacings', action='store_true',
                        help='Transform all data into the same voxel spacings')
@@ -134,10 +135,11 @@ def add_transform_config_args(parser):
     return parser
 
 def add_data_config_args(parser):
-    group = parser.add_argument_group('transform', 'Settings for transform, both training and validation')
+    group = parser.add_argument_group('data', 'Settings for data, both reading from disk and loading into model')
 
     group.add_argument('--data_path', default='/datasets/', type=str,
                         help='Dataset path')
+    group.add_argument('--task', default='Task03_Liver', type=str, help='The Decathlon task to finetune on.')
     group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
     group.add_argument('--batch_size_train', type=int, default=1, help='Batch size for training data loader')
     group.add_argument('--n_workers_train', type=int, default=8, help='Number of workers used in Train DataLoader')
@@ -161,26 +163,39 @@ def add_optimizer_config_args(parser):
                         help='epochs to warmup LR')
     return parser
 
-def add_misc_config_args(parser):
+def add_training_config_args(parser):
     group = parser.add_argument_group('training', 'Training settings')
 
-    group.add_argument('--seed', type=int, default=13, help='Random seed for determinstic training')
-    group.add_argument('--no_cuddn_auto_tuner', action='store_true', help='Disables the CUDDN benchmark in PyTorch')
-    group.add_argument('--anomaly_detection', action='store_true', help='Enables PyTorch anomaly detection')
-    parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
+    group.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     group.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
     group.add_argument('--save_ckpt_freq', default=20, type=int)
     group.add_argument('--val_interval', default=20, type=int)
-    group.add_argument('--log_dir', type=str, help='Folder where the logs should be saved')
-    group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
-    group.add_argument('--resume', default='', help='resume from checkpoint')
-    group.add_argument('--pretrained', type=str, help='Pretrained checkpoint for backbone')
+    group.add_argument('-cross_validation', action='store_true', help='If training should be done using cross validation')
+    group.set_defaults(cross_validation=False)
+    group.add_argument('--cv_folds', default=5, type=int)
+
 
     # distributed training parameters
     group.add_argument('--world_size', default=1, type=int,  help='number of distributed processes')
     group.add_argument('--local_rank', default=-1, type=int)
     group.add_argument('--dist_on_itp', action='store_true')
     group.add_argument('--dist_url', default='env://',  help='url used to set up distributed training')
+
+    # Checkpoint loading
+    group.add_argument('--resume', default='', help='resume from checkpoint')
+    group.add_argument('--pretrained', type=str, help='Pretrained checkpoint for backbone')
+
+    return parser
+
+def add_misc_config_args(parser):
+    group = parser.add_argument_group('misc', 'Misc settings')
+
+    group.add_argument('--seed', type=int, default=13, help='Random seed for determinstic training')
+    group.add_argument('--no_cuddn_auto_tuner', action='store_true', help='Disables the CUDDN benchmark in PyTorch')
+    group.add_argument('--anomaly_detection', action='store_true', help='Enables PyTorch anomaly detection')
+
+    group.add_argument('--log_dir', type=str, help='Folder where the logs should be saved')
+    group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
 
     return parser

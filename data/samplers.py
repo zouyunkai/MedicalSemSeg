@@ -1,7 +1,9 @@
 import math
+
+import numpy as np
 import torch
-from torch.utils.data import Sampler
 import torch.distributed as dist
+from torch.utils.data import Sampler
 
 
 class DistributedEvalSampler(Sampler):
@@ -106,7 +108,7 @@ class DistributedEvalSampler(Sampler):
         self.epoch = epoch
 
 
-class DistSampler(torch.utils.data.Sampler):
+class DistSampler(Sampler):
     def __init__(self, dataset, num_replicas=None, rank=None,
                  shuffle=True, make_even=True):
         if num_replicas is None:
