@@ -282,7 +282,8 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
     # Split for Cross Validation
     random.Random(cfg.seed).shuffle(data_files)
     cv_splits = np.array_split(data_files, cfg.cv_folds)
-    train_folds = list(range(cfg.cv_folds)).pop(cfg.curr_fold)
+    train_folds = list(range(cfg.cv_folds))
+    train_folds.pop(cfg.curr_fold)
     train_files = [cv_splits[i] for i in train_folds]
     train_files = [file for files in train_files for file in files]
     val_files = cv_splits[cfg.curr_fold]
