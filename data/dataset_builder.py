@@ -295,7 +295,7 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
     partition_train = partition_dataset(data=train_files,
                                        num_partitions=get_world_size(),
                                        shuffle=False,
-                                       even_divisible=False)[get_rank()]
+                                       even_divisible=True)[get_rank()]
     print("Number of files in training dataset partition for rank {}:{}".format(get_rank(), len(partition_train)), force=True)
     partition_val = partition_dataset(data=val_files,
                                        num_partitions=get_world_size(),

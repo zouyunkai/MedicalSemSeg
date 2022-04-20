@@ -97,7 +97,7 @@ def add_transform_config_args(parser):
     group.set_defaults(t_rand_crop_fgbg=False)
     group.add_argument('--t_rand_crop_classes', action='store_true',
                        help='Crop subvolumes based on classes')
-    group.set_defaults(t_rand_crop_classes=True)
+    group.set_defaults(t_rand_crop_classes=False)
 
 
     group.add_argument('--t_spatial_pad', action='store_true',
