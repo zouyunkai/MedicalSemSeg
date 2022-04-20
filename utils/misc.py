@@ -258,7 +258,7 @@ def init_distributed_mode(cfg):
     torch.distributed.barrier()
     setup_for_distributed(cfg.rank == 0)
 
-def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler):
+def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler, scheduler):
     output_dir = Path(cfg.output_dir)
     epoch_name = str(epoch)
     if loss_scaler is not None:
@@ -269,6 +269,7 @@ def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler):
                 'optimizer': optimizer.state_dict(),
                 'epoch': epoch,
                 'scaler': loss_scaler.state_dict(),
+                'scheduler': scheduler.state_dict(),
                 'cfg': cfg,
             }
 
@@ -277,7 +278,7 @@ def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler):
         client_state = {'epoch': epoch}
         model.save_checkpoint(save_dir=cfg.output_dir, tag="checkpoint-%s" % epoch_name, client_state=client_state)
 
-def load_model(cfg, model_without_ddp, optimizer, loss_scaler):
+def load_model(cfg, model_without_ddp, optimizer, loss_scaler, scheduler):
     if cfg.resume:
         if cfg.resume.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -289,9 +290,13 @@ def load_model(cfg, model_without_ddp, optimizer, loss_scaler):
         if 'optimizer' in checkpoint and 'epoch' in checkpoint and not (hasattr(cfg, 'eval') and cfg.eval):
             optimizer.load_state_dict(checkpoint['optimizer'])
             cfg.start_epoch = checkpoint['epoch'] + 1
+            print("With optim!")
             if 'scaler' in checkpoint:
                 loss_scaler.load_state_dict(checkpoint['scaler'])
-            print("With optim & sched!")
+                print("With loss scaler!")
+            if 'scheduler' in checkpoint:
+                scheduler.load_state_dict(checkpoint['scheduler'])
+                print("With scheduler!")
 
 def all_reduce_mean(x):
     world_size = get_world_size()

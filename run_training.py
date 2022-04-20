@@ -94,8 +94,12 @@ def main(cfg):
         optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95))
         print(optimizer)
         loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision)
+        scheduler = LinearWarmupCosineAnnealingLR(optimizer,
+                                                  warmup_epochs=args.warmup_epochs,
+                                                  max_epochs=args.epochs)
 
-        misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
+        misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
+                        scheduler=scheduler)
 
         criterion = DiceCELoss(to_onehot_y=True, softmax=True)
 
@@ -111,10 +115,6 @@ def main(cfg):
             mode='gaussian',
             cval=air_cval
         )
-
-        scheduler = LinearWarmupCosineAnnealingLR(optimizer,
-                                                  warmup_epochs=args.warmup_epochs,
-                                                  max_epochs=args.epochs)
 
         # Run training
         start_time = time.time()
@@ -145,7 +145,7 @@ def main(cfg):
             if cfg.output_dir and (epoch % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
                 misc.save_model(
                     cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
-                    loss_scaler=loss_scaler, epoch=epoch)
+                    loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler)
 
             if misc.is_main_process():
                 misc.log_to_neptune(neptune_logger, log_stats)
