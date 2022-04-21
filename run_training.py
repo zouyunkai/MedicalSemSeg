@@ -96,7 +96,8 @@ def main(cfg):
         loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision)
         scheduler = LinearWarmupCosineAnnealingLR(optimizer,
                                                   warmup_epochs=args.warmup_epochs,
-                                                  max_epochs=args.epochs)
+                                                  max_epochs=args.epochs,
+                                                  last_epoch=cfg.start_epoch - 1 if cfg.start_epoch > 0 else -1)
 
         misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
                         scheduler=scheduler)
