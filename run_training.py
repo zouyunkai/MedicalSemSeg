@@ -66,7 +66,7 @@ def main(cfg):
         data_loader_train = DataLoader(
             dataset_train,
             batch_size=cfg.batch_size_train,
-            num_workers=cfg.n_workers_train,
+            num_workers=0,
             pin_memory=cfg.pin_mem,
             drop_last=True,
         )
@@ -74,7 +74,7 @@ def main(cfg):
         data_loader_val = DataLoader(
             dataset_val,
             batch_size=1,
-            num_workers=cfg.n_workers_val,
+            num_workers=0,
             pin_memory=cfg.pin_mem,
             drop_last=False,
         )
@@ -100,8 +100,6 @@ def main(cfg):
 
         misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
                         scheduler=scheduler)
-
-        scheduler.last_epoch = cfg.start_epoch - 1
 
         criterion = DiceCELoss(to_onehot_y=True, softmax=True)
 
