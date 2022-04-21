@@ -101,7 +101,7 @@ def main(cfg):
         misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
                         scheduler=scheduler)
 
-        scheduler.start_epoch = cfg.start_epoch - 1
+        scheduler.last_epoch = cfg.start_epoch - 1
 
         criterion = DiceCELoss(to_onehot_y=True, softmax=True)
 
