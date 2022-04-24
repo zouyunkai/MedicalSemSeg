@@ -16,8 +16,6 @@ from monai.networks.blocks.dynunet_block import UnetOutBlock
 from monai.networks.blocks.unetr_block import UnetrBasicBlock, UnetrUpBlock
 from monai.utils import ensure_tuple_rep
 
-from models.blocks.bottleneck import Bottleneck
-
 
 class SwinUNETR(nn.Module):
     """
@@ -167,7 +165,8 @@ for 3D Medical Image Analysis"
             norm_name=norm_name,
             res_block=True,
         )
-        self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
+        #self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
+        self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
 
         self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
         self.proj_axes = (0, spatial_dims + 1) + tuple(d + 1 for d in range(spatial_dims))
