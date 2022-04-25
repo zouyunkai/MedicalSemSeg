@@ -184,7 +184,7 @@ for 3D Medical Image Analysis"
         x0, x1, x3, x5, x7 = z
         x7 = x7.flatten(1)
         x7 = self.bottleneck(x7)
-        x7 = x7.view(-1, 3, 3, 3, 768)
+        x7 = x7.view(-1, 768, 3, 3, 3)
         dec4 = self.decoder4(self.encoder5(x7), self.encoder4(x5))
         dec3 = self.decoder3(dec4, self.encoder3(x3))
         dec2 = self.decoder2(dec3, self.encoder2(x1))
