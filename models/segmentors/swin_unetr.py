@@ -166,7 +166,8 @@ for 3D Medical Image Analysis"
             res_block=True,
         )
         #self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
-        self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
+        #self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
+        self.bottleneck = nn.Linear(3**3*hidden_size*16, 3**3*hidden_size*16)
 
         self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
         self.proj_axes = (0, spatial_dims + 1) + tuple(d + 1 for d in range(spatial_dims))
@@ -181,7 +182,10 @@ for 3D Medical Image Analysis"
     def forward(self, x_in):
         z = self.swin(x_in)
         x0, x1, x3, x5, x7 = z
-        dec4 = self.decoder4(self.encoder5(self.bottleneck(x7)), self.encoder4(x5))
+        x7 = x7.flatten(1)
+        x7 = self.bottleneck(x7)
+        x7 = x7.view(-1, 3, 3, 3, 768)
+        dec4 = self.decoder4(self.encoder5(x7), self.encoder4(x5))
         dec3 = self.decoder3(dec4, self.encoder3(x3))
         dec2 = self.decoder2(dec3, self.encoder2(x1))
         dec1 = self.decoder1(dec2, self.encoder1(x0))
