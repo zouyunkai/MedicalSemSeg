@@ -10,6 +10,7 @@ from monai.data import (
     load_decathlon_datalist,
     partition_dataset
 )
+from scipy import ndimage
 
 from data.transforms import ScaleCubedIntensityRanged
 from utils.misc import get_world_size, is_main_process, get_rank
@@ -18,7 +19,8 @@ from utils.misc import get_world_size, is_main_process, get_rank
 def build_training_transforms(cfg):
     transforms = [
         monai.transforms.LoadImaged(keys=["image", "label"]),
-        monai.transforms.AddChanneld(keys=["image", "label"])
+        monai.transforms.AddChanneld(keys=["image", "label"]),
+        monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS")
     ]
     if cfg.t_voxel_spacings:
         transforms.append(
@@ -86,15 +88,37 @@ def build_training_transforms(cfg):
         )
     elif cfg.t_rand_crop_classes:
         transforms.append(
+            monai.transforms.CopyItemsd(
+                keys=["label"],
+                times=1,
+                names=["label4crop"],
+            )
+        )
+        transforms.append(
+            monai.transforms.Lambdad(
+                keys=["label4crop"],
+                func=lambda x: np.concatenate(tuple(
+                    [ndimage.binary_dilation((x == _k).astype(x.dtype), iterations=48).astype(x.dtype) for _k in
+                     range(cfg.output_dim)]), axis=0),
+                overwrite=True
+            )
+        )
+        transforms.append(
             monai.transforms.RandCropByLabelClassesd(
                 keys=["image", "label"],
-                label_key="label",
+                label_key="label4crop",
                 spatial_size=cfg.vol_size,
                 num_classes=cfg.output_dim,
+                ratios=[1, ] * cfg.output_dim,
                 num_samples=cfg.t_n_samples,
                 image_key="image",
                 image_threshold=0,
             )
+        )
+        transforms.append(
+            monai.transforms.Lambdad(
+                keys=["label4crop"],
+                func=lambda x: 0)
         )
     transforms.append(
         monai.transforms.RandFlipd(
@@ -155,7 +179,8 @@ def build_training_transforms(cfg):
 def build_validation_transforms(cfg):
     transforms = [
         monai.transforms.LoadImaged(keys=["image", "label"]),
-        monai.transforms.AddChanneld(keys=["image", "label"])
+        monai.transforms.AddChanneld(keys=["image", "label"]),
+        monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS")
     ]
     if cfg.t_voxel_spacings:
         transforms.append(
