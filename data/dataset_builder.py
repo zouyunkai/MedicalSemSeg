@@ -115,11 +115,6 @@ def build_training_transforms(cfg):
                 image_threshold=0,
             )
         )
-        transforms.append(
-            monai.transforms.Lambdad(
-                keys=["label4crop"],
-                func=lambda x: 0)
-        )
     transforms.append(
         monai.transforms.RandFlipd(
             keys=["image", "label"],

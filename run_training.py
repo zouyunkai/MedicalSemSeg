@@ -101,7 +101,7 @@ def main(cfg):
         misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
                         scheduler=scheduler)
 
-        criterion = DiceCELoss(to_onehot_y=True, softmax=True)
+        criterion = DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, )
 
         if cfg.t_normalize:
             air_cval = (0.0 - cfg.t_norm_mean)/cfg.t_norm_std
