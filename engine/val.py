@@ -133,7 +133,7 @@ def run_validation(inferer,
             name = 'val/class{}DiceNew'.format(_c)
             val = metric[2 * _c] / metric[2 * _c + 1]
             new_dice_dict[name] = val
-            print("evaluation metric - class {0:d}: {}".format(_c, val))
+            print("evaluation metric - class {}: {}".format(_c, val))
         avg_metric = 0
         for _c in range(cfg.output_dim - 1):
             avg_metric += metric[2 * _c] / metric[2 * _c + 1]
