@@ -685,6 +685,8 @@ class SwinTransformer3D(nn.Module):
         output = []
 
         x = self.patch_embed(x)
+        if self.ape:
+            x = x + self.absolute_pos_embed
         output.append(x)
 
         x = self.pos_drop(x)
