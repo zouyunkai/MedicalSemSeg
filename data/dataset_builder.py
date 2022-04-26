@@ -81,7 +81,7 @@ def build_training_transforms(cfg):
                 spatial_size=cfg.vol_size,
                 pos=1,
                 neg=1,
-                num_samples=cfg.t_n_samples,
+                num_samples=cfg.t_n_patches_per_image,
                 image_key="image",
                 image_threshold=0,
             )
@@ -110,7 +110,7 @@ def build_training_transforms(cfg):
                 spatial_size=cfg.vol_size,
                 num_classes=cfg.output_dim,
                 ratios=[1, ] * cfg.output_dim,
-                num_samples=cfg.t_n_samples,
+                num_samples=cfg.t_n_patches_per_image,
                 image_key="image",
                 image_threshold=0,
             )

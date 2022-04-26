@@ -114,8 +114,8 @@ def add_transform_config_args(parser):
                        help='The probability for a random flip in a direction')
 
 
-    group.add_argument('--t_n_samples', default=8, type=int,
-                       help='The number of sampels for the random cropping')
+    group.add_argument('--t_n_patches_per_image', default=1, type=int,
+                       help='The number of samples for the random cropping')
 
     group.add_argument('--t_flip_prob', default=0.1, type=float,
                        help='The probability for a random flip in a direction')
@@ -141,7 +141,7 @@ def add_data_config_args(parser):
                         help='Dataset path')
     group.add_argument('--task', default='Task03_Liver', type=str, help='The Decathlon task to finetune on.')
     group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
-    group.add_argument('--batch_size_train', type=int, default=1, help='Batch size for training data loader')
+    group.add_argument('--n_images_per_batch', type=int, default=8, help='Number of unique images per batch to pull patches from. Total Batch size is n_images_per_batch * t_n_samples_per_image.')
     group.add_argument('--n_workers_train', type=int, default=8, help='Number of workers used in Train DataLoader')
     group.add_argument('--n_workers_val', type=int, default=1, help='Number of workers used in Val DataLoader')
     group.add_argument('--no_pin_memory', action='store_false', dest='pin_mem',

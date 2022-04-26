@@ -8,7 +8,7 @@ import neptune.new as neptune
 import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
-from monai.data import DataLoader
+from monai.data import ThreadDataLoader
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
@@ -63,15 +63,15 @@ def main(cfg):
         #sampler_val = DistSampler(dataset_val, shuffle=False) if cfg.distributed else None
         #print("Sampler_val = %s" % str(sampler_val))
 
-        data_loader_train = DataLoader(
+        data_loader_train = ThreadDataLoader(
             dataset_train,
-            batch_size=cfg.batch_size_train,
+            batch_size=cfg.n_images_per_batch,
             num_workers=0,
             pin_memory=cfg.pin_mem,
             drop_last=True,
         )
 
-        data_loader_val = DataLoader(
+        data_loader_val = ThreadDataLoader(
             dataset_val,
             batch_size=1,
             num_workers=0,
@@ -120,6 +120,7 @@ def main(cfg):
         start_time = time.time()
         #dataset_train.start()
         for epoch in range(cfg.start_epoch, cfg.epochs):
+            torch.cuda.empty_cache()
             if cfg.distributed:
                 #data_loader_train.sampler.set_epoch(epoch)
                 #data_loader_val.sampler.set_epoch(epoch)
@@ -133,6 +134,7 @@ def main(cfg):
                          'epoch': epoch, }
 
             if not(epoch % cfg.val_interval):
+                torch.cuda.empty_cache()
                 if args.distributed:
                     torch.distributed.barrier()
                 val_stats = run_validation(inferer,

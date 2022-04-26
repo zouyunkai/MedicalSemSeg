@@ -1,12 +1,10 @@
 from monai.networks.nets import UNETR
 
-from models.backbones.vit_mae import ViTMAE
 from models.backbones.swin_3d import SwinTransformer3D
-
+from models.backbones.vit_mae import ViTMAE
+from models.segmentors.swin_unetr import SwinUNETR
 from models.segmentors.unetr import UNETRC
 from models.segmentors.unetr_official import UNETROC
-from models.segmentors.swin_unetr import SwinUNETR
-
 
 
 def build_model(cfg):
@@ -64,6 +62,7 @@ def build_model(cfg):
         )
     elif cfg.model == 'SwinUNETR':
         encoder = SwinTransformer3D(
+            vol_size=cfg.vol_size,
             patch_size=cfg.patch_size,
             in_chans=cfg.in_chans,
             embed_dim=48,

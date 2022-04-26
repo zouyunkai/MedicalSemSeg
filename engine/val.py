@@ -1,9 +1,11 @@
 import math
 import sys
 
+import numpy as np
 import torch
+import torch.distributed as dist
 from monai.data import decollate_batch
-from monai.metrics import DiceMetric, HausdorffDistanceMetric
+from monai.metrics import DiceMetric, HausdorffDistanceMetric, compute_meandice
 from monai.metrics.utils import do_metric_reduction
 from monai.transforms import AsDiscrete
 from torch import autograd
@@ -34,6 +36,14 @@ def run_validation(inferer,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.logdir))
 
+    ### Test of new calculations for val dice scores ###
+    metric = torch.zeros((cfg.output_dim - 1) * 2, dtype=torch.float, device=device)
+    metric_sum = 0.0
+    metric_count = 0
+    metric_mat = []
+    ####################################################
+
+
     for data_iter_step, batch in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         autograd.set_detect_anomaly(cfg.anomaly_detection)
 
@@ -45,6 +55,34 @@ def run_validation(inferer,
             with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
                 outputs = inferer(inputs=inputs, network=model)
                 loss = criterion(outputs, labels)
+
+        ### Test of new calculations for val dice scores ###
+        ct = 1.0
+        val_outputs = outputs / ct
+        val_outputs = post_pred(val_outputs[0, ...])
+        val_outputs = val_outputs[None, ...]
+        val_labels = post_label(val_labels[0, ...])
+        val_labels = val_labels[None, ...]
+        value = compute_meandice(
+            y_pred=val_outputs,
+            y=val_labels,
+            include_background=False
+        )
+        metric_count += len(value)
+        metric_sum += value.sum().item()
+        metric_vals = value.cpu().numpy()
+        if len(metric_mat) == 0:
+            metric_mat = metric_vals
+        else:
+            metric_mat = np.concatenate((metric_mat, metric_vals), axis=0)
+
+        for _c in range(cfg.output_dim - 1):
+            val0 = torch.nan_to_num(value[0, _c], nan=0.0)
+            val1 = 1.0 - torch.isnan(value[0, 0]).float()
+            metric[2 * _c] += val0 * val1
+            metric[2 * _c + 1] += val1
+        ####################################################
+
 
         loss_value = loss.item()
 
@@ -85,8 +123,29 @@ def run_validation(inferer,
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.add_scalar('val_loss', loss_value_reduce, epoch_1000x)
 
+    ### Test of new calculations for val dice scores ###
+    dist.barrier()
+    dist.all_reduce(metric, op=torch.distributed.ReduceOp.SUM)
+    metric = metric.tolist()
+    new_dice_dict = {}
+    if dist.get_rank() == 0:
+        for _c in range(cfg.output_dim - 1):
+            name = 'val/class{}DiceNew'.format(_c)
+            val = metric[2 * _c] / metric[2 * _c + 1]
+            new_dice_dict[name] = val
+            print("evaluation metric - class {0:d}: {}".format(_c, val))
+        avg_metric = 0
+        for _c in range(cfg.output_dim - 1):
+            avg_metric += metric[2 * _c] / metric[2 * _c + 1]
+        avg_metric = avg_metric / float(cfg.output_dim - 1)
+        name = 'val/mDiceNew'
+        new_dice_dict[name] = avg_metric
+        print("evaluation metric - Mean dice: {}".format(avg_metric))
+    ####################################################
     # gather the stats from all processes
     torch.cuda.synchronize()
     metric_logger.synchronize_between_processes()
     print("Validation averaged stats:", metric_logger.log_all_average())
-    return {'val/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}
+    val_dict = {'val/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}
+    new_val_dict = {**val_dict, **new_dice_dict}
+    return new_val_dict

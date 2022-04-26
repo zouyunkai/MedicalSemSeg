@@ -1,13 +1,13 @@
+from functools import reduce, lru_cache
+from operator import mul
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-import numpy as np
-from timm.models.layers import DropPath, trunc_normal_
-
-from functools import reduce, lru_cache
-from operator import mul
 from einops import rearrange
+from timm.models.layers import DropPath, trunc_normal_
 
 
 class Mlp(nn.Module):
@@ -38,7 +38,7 @@ def window_partition(x, window_size):
         window_size (tuple[int]): window size
 
     Returns:
-        windows: (B*num_windows, window_size*window_size, C)
+        windows: (B*num_windows, window_size*window_size*window_size, C)
     """
     B, D, H, W, C = x.shape
     x = x.view(B, D // window_size[0], window_size[0], H // window_size[1], window_size[1], W // window_size[2],
@@ -118,7 +118,6 @@ class WindowAttention3D(nn.Module):
         relative_coords[:, :, 0] += self.window_size[0] - 1  # shift to start from 0
         relative_coords[:, :, 1] += self.window_size[1] - 1
         relative_coords[:, :, 2] += self.window_size[2] - 1
-
         relative_coords[:, :, 0] *= (2 * self.window_size[1] - 1) * (2 * self.window_size[2] - 1)
         relative_coords[:, :, 1] *= (2 * self.window_size[2] - 1)
         relative_position_index = relative_coords.sum(-1)  # Wd*Wh*Ww, Wd*Wh*Ww
@@ -430,9 +429,13 @@ class PatchEmbed3D(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
 
-    def __init__(self, patch_size=(2, 2, 2), in_chans=1, embed_dim=48, norm_layer=None):
+    def __init__(self, vol_size=(96, 96, 96), patch_size=(2, 2, 2), in_chans=1, embed_dim=48, norm_layer=None):
         super().__init__()
+        patches_resolution = [vol_size[0] // patch_size[0], vol_size[1] // patch_size[1], vol_size[2] // patch_size[2]]
+        self.vol_size = vol_size
         self.patch_size = patch_size
+        self.patches_resolution = patches_resolution
+        self.num_patches = patches_resolution[0] * patches_resolution[1] * patches_resolution[2]
 
         self.in_chans = in_chans
         self.embed_dim = embed_dim
@@ -470,6 +473,7 @@ class SwinTransformer3D(nn.Module):
           https://arxiv.org/pdf/2103.14030
 
     Args:
+        vol_size (int | tuple(int)): Vol size. Default: (96,96,96).
         patch_size (int | tuple(int)): Patch size. Default: (2,2,2).
         in_chans (int): Number of input image channels. Default: 1.
         embed_dim (int): Number of linear projection output channels. Default: 48.
@@ -491,6 +495,7 @@ class SwinTransformer3D(nn.Module):
     def __init__(self,
                  pretrained=None,
                  pretrained2d=True,
+                 vol_size=(96, 96, 96),
                  patch_size=(2, 2, 2),
                  in_chans=1,
                  embed_dim=48,
@@ -504,7 +509,8 @@ class SwinTransformer3D(nn.Module):
                  attn_drop_rate=0.,
                  drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm,
-                 patch_norm=False,
+                 patch_norm=True,
+                 ape=False,
                  frozen_stages=-1,
                  use_checkpoint=False):
         super().__init__()
@@ -517,13 +523,23 @@ class SwinTransformer3D(nn.Module):
         self.frozen_stages = frozen_stages
         self.window_size = window_size
         self.patch_size = patch_size
+        self.ape = ape
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed3D(
-            patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None)
+            vol_size=vol_size, patch_size=patch_size, in_chans=in_chans,
+            embed_dim=embed_dim, norm_layer=norm_layer if self.patch_norm else None)
+        num_patches = self.patch_embed.num_patches
+        patches_resolution = self.patch_embed.patches_resolution
+        self.patches_resolution = patches_resolution
 
         self.pos_drop = nn.Dropout(p=drop_rate)
+
+
+        # absolute position embedding
+        if self.ape:
+            self.absolute_pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
+            trunc_normal_(self.absolute_pos_embed, std=.02)
 
         # stochastic depth
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
