@@ -73,11 +73,31 @@ def build_training_transforms(cfg):
                 keys=["image", "label"],
                 spatial_size=cfg.vol_size,
         ))
+    if cfg.t_rand_crop_dilated_center:
+        labelkey = 'label4crop'
+        transforms.append(
+            monai.transforms.CopyItemsd(
+                keys=["label"],
+                times=1,
+                names=[labelkey],
+            )
+        )
+        transforms.append(
+            monai.transforms.Lambdad(
+                keys=[labelkey],
+                func=lambda x: np.concatenate(tuple(
+                    [ndimage.binary_dilation((x == _k).astype(x.dtype), iterations=48).astype(x.dtype) for _k in
+                     range(cfg.output_dim)]), axis=0),
+                overwrite=True
+            )
+        )
+    else:
+        labelkey = 'label'
     if cfg.t_rand_crop_fgbg:
         transforms.append(
             monai.transforms.RandCropByPosNegLabeld(
                 keys=["image", "label"],
-                label_key="label",
+                label_key=labelkey,
                 spatial_size=cfg.vol_size,
                 pos=1,
                 neg=1,
@@ -88,25 +108,9 @@ def build_training_transforms(cfg):
         )
     elif cfg.t_rand_crop_classes:
         transforms.append(
-            monai.transforms.CopyItemsd(
-                keys=["label"],
-                times=1,
-                names=["label4crop"],
-            )
-        )
-        transforms.append(
-            monai.transforms.Lambdad(
-                keys=["label4crop"],
-                func=lambda x: np.concatenate(tuple(
-                    [ndimage.binary_dilation((x == _k).astype(x.dtype), iterations=48).astype(x.dtype) for _k in
-                     range(cfg.output_dim)]), axis=0),
-                overwrite=True
-            )
-        )
-        transforms.append(
             monai.transforms.RandCropByLabelClassesd(
                 keys=["image", "label"],
-                label_key="label4crop",
+                label_key=labelkey,
                 spatial_size=cfg.vol_size,
                 num_classes=cfg.output_dim,
                 ratios=[1, ] * cfg.output_dim,
@@ -115,10 +119,12 @@ def build_training_transforms(cfg):
                 image_threshold=0,
             )
         )
+    if cfg.t_rand_crop_dilated_center:
         transforms.append(
             monai.transforms.Lambdad(
-                keys=["label4crop"],
-                func=lambda x: 0)
+                keys=[labelkey],
+                func=lambda x: 0
+            )
         )
     transforms.append(
         monai.transforms.RandFlipd(
