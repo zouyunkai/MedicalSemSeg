@@ -61,7 +61,7 @@ def run_validation(inferer,
         val_outputs = outputs / ct
         val_outputs = post_pred(val_outputs[0, ...])
         val_outputs = val_outputs[None, ...]
-        val_labels = post_label(val_labels[0, ...])
+        val_labels = post_label(labels[0, ...])
         val_labels = val_labels[None, ...]
         value = compute_meandice(
             y_pred=val_outputs,
