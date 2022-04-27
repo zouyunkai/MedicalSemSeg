@@ -312,12 +312,12 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
 
     # Split for Cross Validation
     random.Random(cfg.seed).shuffle(data_files)
-    cv_splits = np.array_split(data_files, cfg.cv_folds)
-    train_folds = list(range(cfg.cv_folds))
-    train_folds.pop(cfg.curr_fold)
+    cv_splits = np.array_split(data_files, cfg.cv_max_folds)
+    train_folds = list(range(cfg.cv_max_folds))
+    train_folds.pop(cfg.cv_fold)
     train_files = [cv_splits[i] for i in train_folds]
     train_files = [file for files in train_files for file in files]
-    val_files = cv_splits[cfg.curr_fold]
+    val_files = cv_splits[cfg.cv_fold]
     if is_main_process():
         print("Number of files in training cv split: {}".format(len(train_files)))
         print("Number of files in val cv split: {}".format(len(val_files)))
@@ -354,7 +354,7 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
 def build_decathlon_cv_datasets(cfg, train_transform, val_transform):
     msd_dataset = CrossValidation(
         dataset_cls=DecathlonDataset,
-        nfolds=cfg.cv_folds,
+        nfolds=cfg.cv_max_folds,
         root_dir=cfg.data_path,
         task=cfg.task,
         transform=train_transform,
@@ -367,9 +367,9 @@ def build_decathlon_cv_datasets(cfg, train_transform, val_transform):
     )
     if is_main_process():
         print("Number of files in total training dataset: {}".format(len(msd_dataset)))
-    train_folds = list(range(cfg.cv_folds)).pop(cfg.curr_fold)
+    train_folds = list(range(cfg.cv_max_folds)).pop(cfg.cv_fold)
     dataset_train = msd_dataset.get_dataset(folds=train_folds)
-    dataset_val = msd_dataset.get_dataset(folds=cfg.curr_fold, transform=val_transform)
+    dataset_val = msd_dataset.get_dataset(folds=cfg.cv_fold, transform=val_transform)
     if is_main_process():
         print("Number of files in training cv split: {}".format(len(dataset_train)))
         print("Number of files in val cv split: {}".format(len(dataset_val)))

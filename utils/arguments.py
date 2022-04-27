@@ -174,9 +174,8 @@ def add_training_config_args(parser):
     group.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
     group.add_argument('--save_ckpt_freq', default=20, type=int)
     group.add_argument('--val_interval', default=20, type=int)
-    group.add_argument('-cross_validation', action='store_true', help='If training should be done using cross validation')
-    group.set_defaults(cross_validation=False)
-    group.add_argument('--cv_folds', default=5, type=int)
+    group.add_argument('--cv_fold', default=0, type=int, help='Current fold for cross validation')
+    group.add_argument('--cv_max_folds', default=5, type=int, help='Max folds for cross validation')
 
 
     # distributed training parameters
@@ -200,5 +199,6 @@ def add_misc_config_args(parser):
 
     group.add_argument('--log_dir', type=str, help='Folder where the logs should be saved')
     group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
+    group.add_argument('--description', type=str, help='The description of the experiment, used for Neptune logging.')
 
     return parser
