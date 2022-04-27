@@ -146,7 +146,7 @@ def add_data_config_args(parser):
     group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
     group.add_argument('--n_images_per_batch', type=int, default=8, help='Number of unique images per batch to pull patches from. Total Batch size is n_images_per_batch * t_n_samples_per_image.')
     group.add_argument('--n_workers_train', type=int, default=8, help='Number of workers used in Train DataLoader')
-    group.add_argument('--n_workers_val', type=int, default=1, help='Number of workers used in Val DataLoader')
+    group.add_argument('--n_workers_val', type=int, default=2, help='Number of workers used in Val DataLoader')
     group.add_argument('--no_pin_memory', action='store_false', dest='pin_mem',
                        help='When enabled Dataloaders wont pin GPU memory')
     group.set_defaults(pin_mem=True)
