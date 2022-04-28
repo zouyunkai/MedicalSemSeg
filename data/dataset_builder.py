@@ -179,6 +179,8 @@ def build_training_transforms(cfg):
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
     )
+    if is_main_process():
+        print("Training transforms: {}".format(transforms))
     return monai.transforms.Compose(transforms)
 
 
@@ -250,6 +252,8 @@ def build_validation_transforms(cfg):
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
     )
+    if is_main_process():
+        print("Validation transforms: {}".format(transforms))
     return monai.transforms.Compose(transforms)
 
 
@@ -335,20 +339,30 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
     print("Number of files in validation dataset partition for rank {}:{}".format(get_rank(), len(partition_val)), force=True)
 
     # Create datasets
-    dataset_train = CacheDataset(
-        data=partition_train,
-        transform=train_transform,
-        cache_rate=1.0,
-        num_workers=cfg.n_workers_train
-    )
+    if cfg.cache_dataset:
+        dataset_train = CacheDataset(
+            data=partition_train,
+            transform=train_transform,
+            cache_rate=1.0,
+            num_workers=cfg.n_workers_train
+        )
 
-    dataset_val = CacheDataset(
-        data=partition_val,
-        transform=val_transform,
-        cache_rate=1.0,
-        num_workers=cfg.n_workers_val
-    )
+        dataset_val = CacheDataset(
+            data=partition_val,
+            transform=val_transform,
+            cache_rate=1.0,
+            num_workers=cfg.n_workers_val
+        )
+    else:
+        dataset_train = Dataset(
+            data=partition_train,
+            transform=train_transform
+        )
 
+        dataset_val = Dataset(
+            data=partition_val,
+            transform=val_transform
+        )
     return dataset_train, dataset_val
 
 def build_decathlon_cv_datasets(cfg, train_transform, val_transform):

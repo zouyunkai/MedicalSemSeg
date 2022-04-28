@@ -32,7 +32,7 @@ def add_model_config_args(parser):
     group.add_argument('--model', default='UNETR_Official', type=str,
                         help='Model name')
 
-    group.add_argument('--vol_size', nargs='*', default=[224], type=int,
+    group.add_argument('--vol_size', nargs='*', default=[96], type=int,
                         help='volume input size, can be a single number or for example --input_size 128 64 32 as H*W*D')
     group.add_argument('--patch_size', nargs='*', default=[16], type=int,
                         help='patch input size, can be a single number or for example --patch_size 128 64 32 as H*W*D')
@@ -42,6 +42,8 @@ def add_model_config_args(parser):
                         help='Dimension of the output, must be equal to the number of classes being segmented.')
     group.add_argument('--in_chans', default=1, type=int,
                         help='Number of channels for the volumes')
+    group.add_argument('--hidden_dim', default=48, type=int,
+                        help='Dimension of hidden/embedding dimension')
 
     group.add_argument('--rel_pos_bias', action='store_true',
                         help='Use relative position bias in the encoder')
@@ -150,6 +152,9 @@ def add_data_config_args(parser):
     group.add_argument('--no_pin_memory', action='store_false', dest='pin_mem',
                        help='When enabled Dataloaders wont pin GPU memory')
     group.set_defaults(pin_mem=True)
+    group.add_argument('--no_cache_dataset', action='store_false', dest='cache_dataset',
+                       help='When enabled only use the default type of Dataset instead of CacheDataset, mostly used for debugging.')
+    group.set_defaults(cache_dataset=True)
 
     return parser
 
@@ -198,6 +203,9 @@ def add_misc_config_args(parser):
     group.add_argument('--anomaly_detection', action='store_true', help='Enables PyTorch anomaly detection')
 
     group.add_argument('--log_dir', type=str, help='Folder where the logs should be saved')
+    group.add_argument('--no_neptune_logging', action='store_false', dest='neptune_logging',
+                       help='If online logging to neptune should be disabled')
+    group.set_defaults(neptune_logging=True)
     group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
     group.add_argument('--description', type=str, help='The description of the experiment, used for Neptune logging.')
 

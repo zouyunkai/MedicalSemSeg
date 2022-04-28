@@ -44,13 +44,12 @@ def main(cfg):
         log_writer = SummaryWriter(logdir=cfg.log_dir)
     else:
         log_writer = None
-    if misc.get_rank() == 0:
+    if misc.get_rank() == 0 and cfg.neptune_logging:
         neptune_logger = neptune.init(description=cfg.description)
         neptune_logger['parameters'] = cfg_dict
 
     # -- Setup data --
     dataset_train, dataset_val = build_train_and_val_datasets(cfg)
-
     #sampler_val = DistSampler(dataset_val, shuffle=False) if cfg.distributed else None
     #print("Sampler_val = %s" % str(sampler_val))
 
@@ -140,7 +139,7 @@ def main(cfg):
                 cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler)
 
-        if misc.is_main_process():
+        if misc.is_main_process() and cfg.neptune_logging:
             misc.log_to_neptune(neptune_logger, log_stats)
 
         if cfg.output_dir and misc.is_main_process():
@@ -155,7 +154,7 @@ def main(cfg):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    if misc.is_main_process():
+    if misc.is_main_process() and cfg.neptune_logging:
         neptune_logger.stop()
     torch.distributed.destroy_process_group()
 
