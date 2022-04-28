@@ -313,3 +313,14 @@ def log_to_neptune(neptune_logger, metric_dict):
     for k, v in metric_dict.items():
         if not k == 'epoch':
             neptune_logger[k].log(v, epoch)
+
+def tag_builder(cfg):
+    tags = list()
+    tags.append('Finetuning')
+    tags.append(cfg.model)
+    if cfg.input_dim == 3:
+        tags.append('3D')
+    else:
+        tags.append('2D')
+    tags.append(cfg.task)
+    return tags

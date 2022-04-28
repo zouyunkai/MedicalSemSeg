@@ -45,8 +45,10 @@ def main(cfg):
     else:
         log_writer = None
     if misc.get_rank() == 0 and cfg.neptune_logging:
+        tags = misc.tag_builder(cfg)
         neptune_logger = neptune.init(description=cfg.description)
         neptune_logger['parameters'] = cfg_dict
+        neptune_logger['sys/tags'].add(tags)
 
     # -- Setup data --
     dataset_train, dataset_val = build_train_and_val_datasets(cfg)
