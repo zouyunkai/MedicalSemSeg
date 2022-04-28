@@ -246,7 +246,7 @@ def init_distributed_mode(cfg):
     cfg.distributed = True
 
     torch.cuda.set_device(cfg.gpu)
-    cfg.dist_backend = 'gloo'
+    cfg.dist_backend = cfg.backend
     print('| distributed init (rank {}): {}, gpu {}'.format(
         cfg.rank, cfg.dist_url, cfg.gpu), flush=True)
     if 'SLURM_PROCID' in os.environ:

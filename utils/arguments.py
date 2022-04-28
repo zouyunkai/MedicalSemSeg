@@ -188,6 +188,7 @@ def add_training_config_args(parser):
     group.add_argument('--local_rank', default=-1, type=int)
     group.add_argument('--dist_on_itp', action='store_true')
     group.add_argument('--dist_url', default='env://',  help='url used to set up distributed training')
+    group.add_argument('--backend', default='nccl',  help='Backend to use for distributed training')
 
     # Checkpoint loading
     group.add_argument('--resume', default='', help='resume from checkpoint')
