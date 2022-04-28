@@ -172,7 +172,7 @@ for 3D Medical Image Analysis"
         #self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
         #self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
         #self.bottleneck = nn.Linear(3**3*hidden_size*16, 3**3*hidden_size*16)
-        self.bottleneck = Block(dim=384, num_heads=8, qkv_bias=True)
+        self.bottleneck = Block(dim=hidden_size * 16, num_heads=8, qkv_bias=True)
 
         self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
         self.proj_axes = (0, spatial_dims + 1) + tuple(d + 1 for d in range(spatial_dims))
