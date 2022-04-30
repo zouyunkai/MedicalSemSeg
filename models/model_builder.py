@@ -68,7 +68,7 @@ def build_model(cfg):
             embed_dim=cfg.hidden_dim,
             depths=[2, 2, 2, 2],
             num_heads=[3, 6, 12, 24],
-            window_size=(6, 6, 6),
+            window_size=cfg.window_size,
             qkv_bias=cfg.qkv_bias
         )
         model = SwinUNETR(

@@ -36,6 +36,9 @@ def add_model_config_args(parser):
                         help='volume input size, can be a single number or for example --input_size 128 64 32 as H*W*D')
     group.add_argument('--patch_size', nargs='*', default=[16], type=int,
                         help='patch input size, can be a single number or for example --patch_size 128 64 32 as H*W*D')
+    group.add_argument('--window_size', nargs='*', default=[6], type=int,
+                       help='Attention window size, can be a single number or for example --window_size 3 3 3 as H*W*D')
+
     group.add_argument('--input_dim', default=3, type=int,
                         help='Dimension of the input, allowed values are 2 and 3')
     group.add_argument('--output_dim', default=3, type=int,
