@@ -20,7 +20,7 @@ HU_INTENSITY_INTERVALS = np.array([
                             ])
 
 def hu_intensity_to_index_and_weight(intensity, intensity_intervals):
-    indx = np.searchsorted(intensity_intervals, intensity.cpu())
+    indx = np.searchsorted(intensity_intervals, intensity.cpu().detach().numpy())
     ints_range = intensity_intervals[indx] - intensity_intervals[indx-1]
     weight = (intensity - intensity_intervals[indx-1] / ints_range)
     return indx, weight
