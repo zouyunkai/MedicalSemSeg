@@ -44,9 +44,10 @@ class LearnedClassVectors(nn.Module):
             tot_patch_size = 1
 
         if not intensity_transform is None:
-            self.intensity_intervals = intensity_transform(HU_INTENSITY_INTERVALS)
+            self.intensity_intervals = torch.from_numpy(intensity_transform(HU_INTENSITY_INTERVALS)).cuda()
         else:
-            self.intensity_intervals = HU_INTENSITY_INTERVALS
+            self.intensity_intervals = torch.from_numpy(HU_INTENSITY_INTERVALS).cuda()
+        self.n_interval_points = len(self.intensity_intervals)
 
         self.vectors = []
         for i in range(len(self.intensity_intervals)):
@@ -100,18 +101,29 @@ class LearnedClassVectors(nn.Module):
 
     def get_voxel_vector(self, voxel, voxel_index=0):
 
-        indx, weight = self.hu_intensity_to_index_and_weight(voxel)
+        if voxel >= self.intensity_intervals[-1]:
+            indx = self.n_interval_points - 2
+            weight = 1.0
+        elif voxel <= self.intensity_intervals[0]:
+            indx = 0
+            weight = 0.0
+        else:
+            tmp = torch.cat([self.intensity_intervals, voxel.unsqueeze()])
+            _, indices = tmp.sort()
+            indx = (indices == self.n_interval_points).nonzero(as_tuple=True)[0] - 1
+            ints_range = self.intensity_intervals[indx + 1] - self.intensity_intervals[indx]
+            weight = (voxel - self.intensity_intervals[indx]) / ints_range
 
         vector_a = self.vectors[indx][voxel_index]
-        vector_b = self.vectors[indx-1][voxel_index]
-        vector_out = weight*vector_a + (1-weight)*vector_b
+        vector_b = self.vectors[indx + 1][voxel_index]
+        vector_out = weight*vector_b + (1-weight)*vector_a
 
         return vector_out
 
     def hu_intensity_to_index_and_weight(self, intensity):
         indx = np.searchsorted(self.intensity_intervals, intensity.item())
         ints_range = self.intensity_intervals[indx] - self.intensity_intervals[indx-1]
-        weight = (intensity - self.intensity_intervals[indx-1] / ints_range)
+        weight = (intensity - self.intensity_intervals[indx-1]) / ints_range
         return indx, weight
 
 
