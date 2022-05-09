@@ -19,12 +19,6 @@ HU_INTENSITY_INTERVALS = np.array([
                             1000   # Bone
                             ])
 
-def hu_intensity_to_index_and_weight(intensity, intensity_intervals):
-    indx = np.searchsorted(intensity_intervals, intensity.cpu().detach().numpy())
-    ints_range = intensity_intervals[indx] - intensity_intervals[indx-1]
-    weight = (intensity - intensity_intervals[indx-1] / ints_range)
-    return indx, weight
-
 
 class LearnedClassVectors(nn.Module):
     def __init__(self, patch_size, out_dim, vector_dim, intensity_transform=None, patch_position_embeddings=True, final_layer=True):
@@ -106,7 +100,7 @@ class LearnedClassVectors(nn.Module):
 
     def get_voxel_vector(self, voxel, voxel_index=0):
 
-        indx, weight = hu_intensity_to_index_and_weight(voxel, self.intensity_intervals)
+        indx, weight = self.hu_intensity_to_index_and_weight(voxel)
 
         vector_a = self.vectors[indx][voxel_index]
         vector_b = self.vectors[indx-1][voxel_index]
@@ -114,5 +108,10 @@ class LearnedClassVectors(nn.Module):
 
         return vector_out
 
+    def hu_intensity_to_index_and_weight(self, intensity):
+        indx = np.searchsorted(self.intensity_intervals, intensity.item())
+        ints_range = self.intensity_intervals[indx] - self.intensity_intervals[indx-1]
+        weight = (intensity - self.intensity_intervals[indx-1] / ints_range)
+        return indx, weight
 
 
