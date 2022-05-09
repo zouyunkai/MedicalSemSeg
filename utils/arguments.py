@@ -68,6 +68,21 @@ def add_model_config_args(parser):
                         help='Use mixed precision for model, operations and input')
     group.set_defaults(mixed_precision=False)
 
+    group.add_argument('--learned_cls_vectors', action='store_true',
+                       help='Use learned class vectors for CT intensity values to shift patch embeddings.')
+    group.set_defaults(learned_cls_vectors=False)
+
+    group.add_argument('--lcv_vector_dim', default=6, type=int,
+                       help='Hidden dimension for learned class vectors for patch embeddings')
+
+    group.add_argument('--lcv_patch_positions', action='store_true',
+                       help='If we should use individual learned parameters for every position in the patch')
+    group.set_defaults(lcv_patch_positions=False)
+
+    group.add_argument('--lcv_final_layer', action='store_true',
+                       help='If a final layer should be used to transform the vectors for each voxel to a vector for the patch.')
+    group.set_defaults(lcv_final_layer=False)
+
 
     return parser
 

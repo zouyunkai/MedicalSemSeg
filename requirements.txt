@@ -8,3 +8,4 @@ nibabel
 tqdm
 scipy
 einops
+functorch

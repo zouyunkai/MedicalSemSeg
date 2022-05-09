@@ -1,3 +1,4 @@
+import monai
 from monai.networks.nets import UNETR
 
 from models.backbones.swin_3d import SwinTransformer3D
@@ -81,6 +82,23 @@ def build_model(cfg):
             patch_size=cfg.patch_size,
         )
     elif cfg.model == 'nnFormerUNETR':
+        if cfg.t_fixed_ct_intensity:
+            transform = monai.transforms.ScaleIntensityRange(
+                    a_min=cfg.t_ct_min,
+                    a_max=cfg.t_ct_max,
+                    b_min=0.0,
+                    b_max=1.0,
+                    clip=True,
+                    )
+        else:
+            transform = monai.transforms.ScaleIntensityRangePercentiles(
+                    lower=5,
+                    upper=95,
+                    b_min=0.0,
+                    b_max=1.0,
+                    clip=True,
+                    relative=False
+                    )
         encoder = SwinTransformerNNFormer(
             pretrain_img_size=cfg.vol_size,
             patch_size=cfg.patch_size,
@@ -89,7 +107,12 @@ def build_model(cfg):
             depths=[2, 2, 2, 2],
             num_heads=[3, 6, 12, 24],
             window_size=cfg.window_size,
-            qkv_bias=cfg.qkv_bias
+            qkv_bias=cfg.qkv_bias,
+            use_learned_cls_vectors=cfg.learned_cls_vectors,
+            lcv_transform=transform,
+            lcv_vector_dim=cfg.lcv_vector_dim,
+            lcv_patch_positions=cfg.lcv_patch_positions,
+            lcv_final_layer=cfg.lcv_final_layer
         )
         model = SwinUNETR(
             encoder,

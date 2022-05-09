@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from timm.models.layers import DropPath, to_3tuple, trunc_normal_
 from torch import nn
 
+from models.blocks.patch_embeddings import LearnedClassVectors
+
 
 class ContiguousGrad(torch.autograd.Function):
     @staticmethod
@@ -458,7 +460,12 @@ class SwinTransformerNNFormer(nn.Module):
                  drop_path_rate=0.2,
                  norm_layer=nn.LayerNorm,
                  patch_norm=True,
-                 out_indices=(0, 1, 2, 3)
+                 out_indices=(0, 1, 2, 3),
+                 use_learned_cls_vectors=True,
+                 lcv_transform=None,
+                 lcv_vector_dim=6,
+                 lcv_patch_positions=False,
+                 lcv_final_layer=False
                  ):
         super().__init__()
 
@@ -468,7 +475,7 @@ class SwinTransformerNNFormer(nn.Module):
         self.embed_dim = embed_dim
         self.patch_norm = patch_norm
         self.out_indices = out_indices
-
+        self.use_learned_cls_vectors = use_learned_cls_vectors
         # split image into non-overlapping patches
         '''
         self.patch_embed = PatchEmbed(
@@ -482,6 +489,16 @@ class SwinTransformerNNFormer(nn.Module):
             embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None
         )
+
+        if use_learned_cls_vectors:
+            self.lcv = LearnedClassVectors(
+                                            patch_size=patch_size,
+                                            out_dim=embed_dim,
+                                            vector_dim=lcv_vector_dim,
+                                            intensity_transform=lcv_transform,
+                                            patch_position_embeddings=lcv_patch_positions,
+                                            final_layer=lcv_final_layer)
+
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
@@ -520,11 +537,14 @@ class SwinTransformerNNFormer(nn.Module):
             layer_name = f'norm{i_layer}'
             self.add_module(layer_name, layer)
 
-    def forward(self, x):
+    def forward(self, input):
         """Forward function."""
 
         output = []
-        x = self.patch_embed(x)
+        x = self.patch_embed(input)
+        if self.use_learned_cls_vectors:
+            x_cls = self.lcv(input)
+        x = x + x_cls
         output.append(x)
 
         Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
@@ -543,9 +563,3 @@ class SwinTransformerNNFormer(nn.Module):
 
                 output.append(out)
         return output
-
-
-
-
-
-
