@@ -496,7 +496,6 @@ class SwinTransformerNNFormer(nn.Module):
                                             out_dim=embed_dim,
                                             vector_dim=lcv_vector_dim,
                                             intensity_transform=lcv_transform,
-                                            patch_position_embeddings=lcv_patch_positions,
                                             final_layer=lcv_final_layer)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
@@ -544,7 +543,7 @@ class SwinTransformerNNFormer(nn.Module):
         x = self.patch_embed(input)
         if self.use_learned_cls_vectors:
             x_cls = self.lcv(input)
-        x = x + x_cls
+            x = x + x_cls
         output.append(x)
 
         Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
