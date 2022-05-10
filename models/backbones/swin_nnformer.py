@@ -464,7 +464,7 @@ class SwinTransformerNNFormer(nn.Module):
                  use_learned_cls_vectors=True,
                  lcv_transform=None,
                  lcv_vector_dim=6,
-                 lcv_patch_positions=False,
+                 lcv_static_sincos=False,
                  lcv_final_layer=False
                  ):
         super().__init__()
@@ -496,6 +496,7 @@ class SwinTransformerNNFormer(nn.Module):
                                             out_dim=embed_dim,
                                             vector_dim=lcv_vector_dim,
                                             intensity_transform=lcv_transform,
+                                            static_sincos=lcv_static_sincos,
                                             final_layer=lcv_final_layer)
 
         self.pos_drop = nn.Dropout(p=drop_rate)

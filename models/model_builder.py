@@ -111,6 +111,7 @@ def build_model(cfg):
             use_learned_cls_vectors=cfg.learned_cls_vectors,
             lcv_transform=transform,
             lcv_vector_dim=cfg.lcv_vector_dim,
+            lcv_static_sincos=cfg.lcv_static_sincos,
             lcv_final_layer=cfg.lcv_final_layer
         )
         model = SwinUNETR(

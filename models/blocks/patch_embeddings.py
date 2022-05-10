@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from timm.models.layers import to_3tuple
 
+from utils.misc import get_1d_sincos_embed_from_range
+
 HU_INTENSITY_INTERVALS = np.array([
                             -1000, # Air
                             -75,   # Fat
@@ -20,7 +22,7 @@ HU_INTENSITY_INTERVALS = np.array([
 
 
 class LearnedClassVectors(nn.Module):
-    def __init__(self, patch_size, out_dim, vector_dim, intensity_transform=None, final_layer=True):
+    def __init__(self, patch_size, out_dim, vector_dim, intensity_transform=None, static_sincos=False, final_layer=False):
 
         super().__init__()
 
@@ -29,6 +31,7 @@ class LearnedClassVectors(nn.Module):
         self.vector_dim = vector_dim
         self.out_dim = out_dim
         self.voxels_per_patch = reduce(mul, self.patch_size)
+        self.static_sincos = static_sincos
 
 
         if self.final_layer:
@@ -45,8 +48,17 @@ class LearnedClassVectors(nn.Module):
         self.vectors = nn.ParameterList()
         self.vectors_cls = nn.ParameterList()
         count = 1000
+
+        if self.static_sincos:
+            sincos_emb = get_1d_sincos_embed_from_range(vector_dim, np.arange(self.n_intervals))
+
         for i in range(self.n_intervals):
-            self.vectors.append(nn.Parameter(torch.randn(vector_dim)))
+            if self.static_sincos:
+                interval_param = nn.Parameter(torch.zeros(vector_dim), requires_grad=False)
+                interval_param.data.copy_(torch.from_numpy(sincos_emb[i]).float())
+                self.vectors.append(interval_param)
+            else:
+                self.vectors.append(nn.Parameter(torch.randn(vector_dim)))
             self.vectors_cls.append(nn.Parameter((torch.ones(1)*(i+1)*count).repeat(vector_dim), requires_grad=False))
 
 

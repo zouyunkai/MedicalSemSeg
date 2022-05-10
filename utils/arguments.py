@@ -79,6 +79,10 @@ def add_model_config_args(parser):
                        help='If a final layer should be used to transform the vectors for each voxel to a vector for the patch.')
     group.set_defaults(lcv_final_layer=False)
 
+    group.add_argument('--lcv_static_sincos', action='store_true',
+                       help='If class vectors instead should be static sincos embeddings')
+    group.set_defaults(lcv_static_sincos=False)
+
 
     return parser
 
