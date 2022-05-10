@@ -93,9 +93,7 @@ class LearnedClassVectors(nn.Module):
             x = torch.where((x >= self.intensity_intervals[i]) & (x < self.intensity_intervals[i+1]), self.vectors_cls[i], x)
         x = torch.where(x >= self.intensity_intervals[-1], self.vectors_cls[-1], x)
 
-        x = torch.where(x < self.intensity_intervals[0], self.vectors[0], x)
-        for i in range(1, (self.n_intervals - 2)):
-            x = torch.where((x >= self.intensity_intervals[i]) & (x < self.intensity_intervals[i+1]), self.vectors[i], x)
-        x = torch.where(x >= self.intensity_intervals[-1], self.vectors[-1], x)
+        for i in range(self.n_intervals):
+            x = torch.where(x == (i+1)*1000, self.vectors[i], x)
 
         return x
