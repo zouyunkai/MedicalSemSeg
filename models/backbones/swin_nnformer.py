@@ -465,7 +465,8 @@ class SwinTransformerNNFormer(nn.Module):
                  lcv_transform=None,
                  lcv_vector_dim=6,
                  lcv_static_sincos=False,
-                 lcv_final_layer=False
+                 lcv_final_layer=False,
+                 lcv_concat_vector=False
                  ):
         super().__init__()
 
@@ -476,28 +477,39 @@ class SwinTransformerNNFormer(nn.Module):
         self.patch_norm = patch_norm
         self.out_indices = out_indices
         self.use_learned_cls_vectors = use_learned_cls_vectors
+        self.lcv_concat_vector = lcv_concat_vector
         # split image into non-overlapping patches
         '''
         self.patch_embed = PatchEmbed(
             patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None)
         '''
+
+        if use_learned_cls_vectors:
+            if self.lcv_concat_vector:
+                lcv_out_dim = lcv_vector_dim
+                pe_dim = embed_dim - lcv_out_dim
+            else:
+                lcv_out_dim = embed_dim
+                pe_dim = embed_dim
+            self.lcv = LearnedClassVectors(
+                                            patch_size=patch_size,
+                                            out_dim=lcv_out_dim,
+                                            vector_dim=lcv_vector_dim,
+                                            intensity_transform=lcv_transform,
+                                            static_sincos=lcv_static_sincos,
+                                            final_layer=lcv_final_layer,
+                                            concat_vector=lcv_concat_vector)
+
         self.patch_embed = PatchEmbed3D(
             vol_size=pretrain_img_size,
             patch_size=patch_size,
             in_chans=in_chans,
-            embed_dim=embed_dim,
+            embed_dim=pe_dim,
             norm_layer=norm_layer if self.patch_norm else None
         )
 
-        if use_learned_cls_vectors:
-            self.lcv = LearnedClassVectors(
-                                            patch_size=patch_size,
-                                            out_dim=embed_dim,
-                                            vector_dim=lcv_vector_dim,
-                                            intensity_transform=lcv_transform,
-                                            static_sincos=lcv_static_sincos,
-                                            final_layer=lcv_final_layer)
+
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -544,7 +556,10 @@ class SwinTransformerNNFormer(nn.Module):
         x = self.patch_embed(input)
         if self.use_learned_cls_vectors:
             x_cls = self.lcv(input)
-            x = x + x_cls
+            if self.lcv_concat_vector:
+                x = torch.cat([x, x_cls], dim=1)
+            else:
+                x = x + x_cls
         output.append(x)
 
         Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)

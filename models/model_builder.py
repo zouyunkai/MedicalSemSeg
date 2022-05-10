@@ -112,8 +112,10 @@ def build_model(cfg):
             lcv_transform=transform,
             lcv_vector_dim=cfg.lcv_vector_dim,
             lcv_static_sincos=cfg.lcv_static_sincos,
-            lcv_final_layer=cfg.lcv_final_layer
+            lcv_final_layer=cfg.lcv_final_layer,
+            lcv_concat_vector=cfg.lcv_concat_vector
         )
+        print("LCV Intensity intervals: {}".format(encoder.lcv.intensity_intervals))
         model = SwinUNETR(
             encoder,
             in_channels=cfg.in_chans,

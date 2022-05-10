@@ -83,6 +83,10 @@ def add_model_config_args(parser):
                        help='If class vectors instead should be static sincos embeddings')
     group.set_defaults(lcv_static_sincos=False)
 
+    group.add_argument('--lcv_concat_vector', action='store_true',
+                       help='If class vectors that summarizes the distribution over a patch should be concatenated to patch embeddings.')
+    group.set_defaults(lcv_concat_vector=False)
+
 
     return parser
 
