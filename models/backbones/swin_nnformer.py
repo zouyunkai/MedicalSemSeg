@@ -487,13 +487,13 @@ class SwinTransformerNNFormer(nn.Module):
             norm_layer=norm_layer if self.patch_norm else None)
         '''
 
+        pe_dim = embed_dim
         if use_learned_cls_vectors:
             if self.lcv_concat_vector:
                 lcv_out_dim = lcv_vector_dim
                 pe_dim = embed_dim - lcv_out_dim
             else:
                 lcv_out_dim = embed_dim
-                pe_dim = embed_dim
             self.lcv = LearnedClassVectors(
                                             patch_size=patch_size,
                                             out_dim=lcv_out_dim,
