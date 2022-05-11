@@ -113,7 +113,8 @@ def build_model(cfg):
             lcv_vector_dim=cfg.lcv_vector_dim,
             lcv_static_sincos=cfg.lcv_static_sincos,
             lcv_final_layer=cfg.lcv_final_layer,
-            lcv_concat_vector=cfg.lcv_concat_vector
+            lcv_concat_vector=cfg.lcv_concat_vector,
+            lcv_only=cfg.lcv_only
         )
         print("LCV Intensity intervals: {}".format(encoder.lcv.intensity_intervals))
         model = SwinUNETR(

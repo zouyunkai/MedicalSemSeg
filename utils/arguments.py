@@ -87,6 +87,9 @@ def add_model_config_args(parser):
                        help='If class vectors that summarizes the distribution over a patch should be concatenated to patch embeddings.')
     group.set_defaults(lcv_concat_vector=False)
 
+    group.add_argument('--lcv_only', action='store_true',
+                       help='Dont use regular patch embeddings, only class vectors')
+    group.set_defaults(lcv_only=False)
 
     return parser
 

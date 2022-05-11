@@ -466,7 +466,8 @@ class SwinTransformerNNFormer(nn.Module):
                  lcv_vector_dim=6,
                  lcv_static_sincos=False,
                  lcv_final_layer=False,
-                 lcv_concat_vector=False
+                 lcv_concat_vector=False,
+                 lcv_only=False
                  ):
         super().__init__()
 
@@ -478,6 +479,7 @@ class SwinTransformerNNFormer(nn.Module):
         self.out_indices = out_indices
         self.use_learned_cls_vectors = use_learned_cls_vectors
         self.lcv_concat_vector = lcv_concat_vector
+        self.lcv_only = lcv_only
         # split image into non-overlapping patches
         '''
         self.patch_embed = PatchEmbed(
@@ -500,14 +502,14 @@ class SwinTransformerNNFormer(nn.Module):
                                             static_sincos=lcv_static_sincos,
                                             final_layer=lcv_final_layer,
                                             concat_vector=lcv_concat_vector)
-
-        self.patch_embed = PatchEmbed3D(
-            vol_size=pretrain_img_size,
-            patch_size=patch_size,
-            in_chans=in_chans,
-            embed_dim=pe_dim,
-            norm_layer=norm_layer if self.patch_norm else None
-        )
+        if not self.lcv_only:
+            self.patch_embed = PatchEmbed3D(
+                vol_size=pretrain_img_size,
+                patch_size=patch_size,
+                in_chans=in_chans,
+                embed_dim=pe_dim,
+                norm_layer=norm_layer if self.patch_norm else None
+            )
 
 
 
@@ -553,13 +555,20 @@ class SwinTransformerNNFormer(nn.Module):
         """Forward function."""
 
         output = []
-        x = self.patch_embed(input)
+
         if self.use_learned_cls_vectors:
             x_cls = self.lcv(input)
-            if self.lcv_concat_vector:
-                x = torch.cat([x, x_cls], dim=1)
+            if self.lcv_only:
+                x = x_cls
             else:
-                x = x + x_cls
+                x = self.patch_embed(input)
+                if self.lcv_concat_vector:
+                    x = torch.cat([x, x_cls], dim=1)
+                else:
+                    x = x + x_cls
+        else:
+            x = self.patch_embed(input)
+
         output.append(x)
 
         Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
