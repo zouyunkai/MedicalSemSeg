@@ -467,7 +467,8 @@ class SwinTransformerNNFormer(nn.Module):
                  lcv_static_sincos=False,
                  lcv_final_layer=False,
                  lcv_concat_vector=False,
-                 lcv_only=False
+                 lcv_only=False,
+                 lcv_linear_comb=False
                  ):
         super().__init__()
 
@@ -501,7 +502,8 @@ class SwinTransformerNNFormer(nn.Module):
                                             intensity_transform=lcv_transform,
                                             static_sincos=lcv_static_sincos,
                                             final_layer=lcv_final_layer,
-                                            concat_vector=lcv_concat_vector)
+                                            concat_vector=lcv_concat_vector,
+                                            linear_comb=lcv_linear_comb)
         if not self.lcv_only:
             self.patch_embed = PatchEmbed3D(
                 vol_size=pretrain_img_size,

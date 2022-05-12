@@ -91,6 +91,11 @@ def add_model_config_args(parser):
                        help='Dont use regular patch embeddings, only class vectors')
     group.set_defaults(lcv_only=False)
 
+    group.add_argument('--lcv_linear_comb', action='store_true',
+                       help='For every voxel, the vector for each voxel is a linear combination of the surrounding intervals.')
+    group.set_defaults(lcv_linear_comb=False)
+
+
     return parser
 
 
