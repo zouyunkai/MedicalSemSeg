@@ -128,3 +128,4 @@ def build_model(cfg):
             patch_size=cfg.patch_size,
         )
     return model
+

@@ -9,7 +9,9 @@ from timm.models.layers import to_3tuple
 HU_INTENSITY_INTERVALS_LC = np.array([
                             -1000, # Air
                             -650,  # Lung
+                            -250,  # ?
                             -75,   # Fat
+                            -30,   # ?
                             0,     # Water/Fluids
                             15,    # Cerebrospinal Fluid
                             30,    # Muscle/Kidney
@@ -73,17 +75,21 @@ class LearnedClassVectors(nn.Module):
 
         if not intensity_transform is None:
             intensity_intervals = intensity_transform(self.org_intervals)
-            self.intensity_intervals = np.unique(intensity_intervals)
+            intensity_intervals = np.unique(intensity_intervals)
         else:
-            self.intensity_intervals = self.org_intervals
+            intensity_intervals = self.org_intervals
+        self.intensity_intervals = nn.Parameter(torch.from_numpy(intensity_intervals), requires_grad=False)
 
-        if self.linear_comb:
-            self.n_vectors = len(self.intensity_intervals) - 1
+        if self.linear_comb or self.sincos_emb:
+            self.n_intervals = len(self.intensity_intervals) - 1
         else:
-            self.n_vectors = len(self.intensity_intervals) + 1
+            self.n_intervals = len(self.intensity_intervals) + 1
+
+        self.interval_onehot = nn.Parameter((torch.diag(torch.ones(self.n_intervals + 1)) + torch.diag(torch.ones(self.n_intervals),
+                                                                                     diagonal=1))[0:self.n_intervals]*10, requires_grad=False)
 
         if self.final_layer and self.concat_vector:
-            assert self.vector_dim == self.n_vectors
+            assert self.vector_dim == self.n_intervals
             self.fc = nn.Linear(self.vector_dim, self.out_dim)
         elif self.final_layer:
             self.fc = nn.Linear(self.voxels_per_patch * self.vector_dim, self.out_dim)
@@ -95,7 +101,7 @@ class LearnedClassVectors(nn.Module):
         self.cls_val = -10000
 
         if not self.sincos_emb:
-            for i in range(self.n_vectors):
+            for i in range(self.n_intervals):
                 if self.concat_vector:
                     interval_param = nn.Parameter(torch.zeros(self.vector_dim), requires_grad=False)
                     interval_param[i] = 1.0
@@ -142,11 +148,11 @@ class LearnedClassVectors(nn.Module):
         x = x.view(-1,1)
 
         x = torch.where(x < self.intensity_intervals[0], self.vectors_cls[0], x)
-        for i in range(0, (self.n_vectors - 2)):
+        for i in range(0, (self.n_intervals - 2)):
             x = torch.where((x >= self.intensity_intervals[i]) & (x < self.intensity_intervals[i+1]), self.vectors_cls[i+1], x)
         x = torch.where(x >= self.intensity_intervals[-1], self.vectors_cls[-1], x)
 
-        for i in range(self.n_vectors):
+        for i in range(self.n_intervals):
             x = torch.where(x == (i+1)*-10000, self.vectors[i], x)
 
         return x
@@ -156,10 +162,22 @@ class LearnedClassVectors(nn.Module):
         x = x.flatten(0)
         x = x.view(-1,1)
 
+        x = self.normalize_voxels_to_intervals(x)
+
         x = self.get_hu_sincos_embed(x)
 
         return x
 
+    def normalize_voxels_to_intervals(self, x):
+
+        period = 2 / self.n_intervals
+
+        x_w, x_i = self.voxels_to_weights(x)
+        x_i_min = x_i.view(-1, 1) - 1
+
+        norm_x = x_w * period + x_i_min * period - 1
+
+        return norm_x
 
     def create_voxel_vectors_linear_comb(self, x):
         x = torch.clamp(x, min=self.intensity_intervals[0], max=self.intensity_intervals[-1])
@@ -170,26 +188,25 @@ class LearnedClassVectors(nn.Module):
         x_ub = x
 
         # Create lower bound vectors
-        for i in range(0, (self.n_vectors - 1)):
+        for i in range(0, (self.n_intervals - 1)):
             x_lb = torch.where((x_lb >= self.intensity_intervals[i]) & (x_lb < self.intensity_intervals[i+1]),
                                self.vectors_cls[i], x_lb)
         x_lb = torch.where(x_lb == self.intensity_intervals[-1], self.vectors_cls[-2], x_lb)
 
-        for i in range(self.n_vectors):
+        for i in range(self.n_intervals):
             x_lb = torch.where(x_lb == (i + 1) * self.cls_val, self.vectors[i], x_lb)
 
         # Create upper bound vectors
-        for i in range(0, (self.n_vectors - 1)):
+        for i in range(0, (self.n_intervals - 1)):
             x_ub = torch.where((x_ub > self.intensity_intervals[i]) & (x_ub <= self.intensity_intervals[i + 1]),
                                self.vectors_cls[i + 1], x_ub)
         x_ub = torch.where(x_ub == self.intensity_intervals[0], self.vectors_cls[1], x_ub)
 
-        for i in range(self.n_vectors):
+        for i in range(self.n_intervals):
             x_ub = torch.where(x_ub == (i + 1) * self.cls_val, self.vectors[i], x_ub)
 
         # Create weights
-        x_w = self.vectorized_v_to_w(x.cpu().numpy())
-        x_w = torch.from_numpy(x_w).cuda()
+        x_w, _ = self.voxels_to_weights(x)
 
         # Resulting vector for each voxel is a weighted linear combination of the upper and lower bound vectors
         x = x_w*x_ub + (1-x_w)*x_lb
@@ -209,7 +226,6 @@ class LearnedClassVectors(nn.Module):
         out: (vector_dim, 1)
         """
         assert self.vector_dim % 2 == 0
-        voxel_values = (voxel_values*2)-1
 
         omega = 2 ** torch.arange(self.vector_dim // 2).float().cuda()
 
@@ -219,5 +235,25 @@ class LearnedClassVectors(nn.Module):
         emb_sin = torch.sin(res)  # (M, D/2)
         emb_cos = torch.cos(res)  # (M, D/2)
 
-        emb = torch.concat([emb_sin, emb_cos], axis=0)  # (M, D)
+        emb = torch.concat([emb_sin, emb_cos], axis=1)  # (M, D)
         return emb
+
+    def voxels_to_weights(self, x):
+        x_copy = torch.clone(x)
+
+        # Create interval vectors
+        for i in range(0, self.n_intervals):
+            x = torch.where((x >= self.intensity_intervals[i]) & (x < self.intensity_intervals[i+1]),
+                               self.interval_onehot[i], x)
+        x = torch.where(x == self.intensity_intervals[-1], self.interval_onehot[-1], x)
+        x = x/10
+
+        xi = x*self.intensity_intervals
+        _, indx_interval = torch.max(xi, dim=1)
+        indx_interval = indx_interval.view(-1,1)
+        ximax = xi.gather(1, indx_interval)
+        ximin = xi.gather(1, indx_interval - 1)
+        xirange = ximax - ximin
+        x_w = (x_copy - ximin) / xirange
+
+        return x_w, indx_interval
