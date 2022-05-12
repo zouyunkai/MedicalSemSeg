@@ -41,7 +41,8 @@ class LearnedClassVectors(nn.Module):
         self.linear_comb=linear_comb
 
         if not intensity_transform is None:
-            self.intensity_intervals = intensity_transform(HU_INTENSITY_INTERVALS)
+            intensity_intervals = intensity_transform(HU_INTENSITY_INTERVALS)
+            self.intensity_intervals = np.unique(intensity_intervals)
         else:
             self.intensity_intervals = HU_INTENSITY_INTERVALS
         if self.linear_comb:
