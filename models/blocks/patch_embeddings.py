@@ -80,13 +80,18 @@ class LearnedClassVectors(nn.Module):
             intensity_intervals = self.org_intervals
         self.intensity_intervals = nn.Parameter(torch.from_numpy(intensity_intervals), requires_grad=False)
 
-        if self.linear_comb or self.sincos_emb:
+        if self.sincos_emb:
             self.n_intervals = len(self.intensity_intervals) - 1
+        elif self.linear_comb:
+            self.n_intervals = len(self.intensity_intervals)
         else:
             self.n_intervals = len(self.intensity_intervals) + 1
 
+        # Temporary value to prevent overwriting vectors
+        self.tmp_val = -1000
+
         self.interval_onehot = nn.Parameter((torch.diag(torch.ones(self.n_intervals + 1)) + torch.diag(torch.ones(self.n_intervals),
-                                                                                     diagonal=1))[0:self.n_intervals]*10, requires_grad=False)
+                                                                                     diagonal=1))[0:self.n_intervals]*self.tmp_val, requires_grad=False)
 
         if self.final_layer and self.concat_vector:
             assert self.vector_dim == self.n_intervals
@@ -98,7 +103,6 @@ class LearnedClassVectors(nn.Module):
 
         self.vectors = nn.ParameterList()
         self.vectors_cls = nn.ParameterList()
-        self.cls_val = -10000
 
         if not self.sincos_emb:
             for i in range(self.n_intervals):
@@ -108,10 +112,7 @@ class LearnedClassVectors(nn.Module):
                     self.vectors.append(interval_param)
                 else:
                     self.vectors.append(nn.Parameter(torch.randn(self.vector_dim)))
-                self.vectors_cls.append(nn.Parameter((torch.ones(1)*(i+1)*self.cls_val).repeat(self.vector_dim), requires_grad=False))
-
-        if self.linear_comb:
-            self.vectorized_v_to_w = np.vectorize(self.voxel_to_weight)
+                self.vectors_cls.append(nn.Parameter((torch.ones(1)*(i+1)*self.tmp_val).repeat(self.vector_dim), requires_grad=False))
 
 
     def forward(self, x):
@@ -153,7 +154,7 @@ class LearnedClassVectors(nn.Module):
         x = torch.where(x >= self.intensity_intervals[-1], self.vectors_cls[-1], x)
 
         for i in range(self.n_intervals):
-            x = torch.where(x == (i+1)*-10000, self.vectors[i], x)
+            x = torch.where(x == (i+1)*self.tmp_val, self.vectors[i], x)
 
         return x
 
@@ -184,8 +185,8 @@ class LearnedClassVectors(nn.Module):
         x = x.flatten(0)
         x = x.view(-1,1)
 
-        x_lb = x
-        x_ub = x
+        x_lb = torch.clone(x)
+        x_ub = torch.clone(x)
 
         # Create lower bound vectors
         for i in range(0, (self.n_intervals - 1)):
@@ -194,7 +195,7 @@ class LearnedClassVectors(nn.Module):
         x_lb = torch.where(x_lb == self.intensity_intervals[-1], self.vectors_cls[-2], x_lb)
 
         for i in range(self.n_intervals):
-            x_lb = torch.where(x_lb == (i + 1) * self.cls_val, self.vectors[i], x_lb)
+            x_lb = torch.where(x_lb == (i + 1) * self.tmp_val, self.vectors[i], x_lb)
 
         # Create upper bound vectors
         for i in range(0, (self.n_intervals - 1)):
@@ -203,7 +204,7 @@ class LearnedClassVectors(nn.Module):
         x_ub = torch.where(x_ub == self.intensity_intervals[0], self.vectors_cls[1], x_ub)
 
         for i in range(self.n_intervals):
-            x_ub = torch.where(x_ub == (i + 1) * self.cls_val, self.vectors[i], x_ub)
+            x_ub = torch.where(x_ub == (i + 1) * self.tmp_val, self.vectors[i], x_ub)
 
         # Create weights
         x_w, _ = self.voxels_to_weights(x)
@@ -246,7 +247,7 @@ class LearnedClassVectors(nn.Module):
             x = torch.where((x >= self.intensity_intervals[i]) & (x < self.intensity_intervals[i+1]),
                                self.interval_onehot[i], x)
         x = torch.where(x == self.intensity_intervals[-1], self.interval_onehot[-1], x)
-        x = x/10
+        x = x/self.tmp_val
 
         xi = x*self.intensity_intervals
         _, indx_interval = torch.max(xi, dim=1)
