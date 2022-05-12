@@ -6,25 +6,51 @@ import torch
 import torch.nn as nn
 from timm.models.layers import to_3tuple
 
-from utils.misc import get_1d_sincos_embed_from_range
+HU_INTENSITY_INTERVALS_LC = np.array([
+                            -1000, # Air
+                            -650,  # Lung
+                            -75,   # Fat
+                            0,     # Water/Fluids
+                            15,    # Cerebrospinal Fluid
+                            30,    # Muscle/Kidney
+                            50,    # Liver / Blood
+                            80,    # Acute (Clotted) Blood
+                            450,   # Trabecular Bone
+                            1000   # Cortical Bone
+                            ])
 
 HU_INTENSITY_INTERVALS = np.array([
-                            -1000, # Air
-                            -75,   # Fat
-                            0,     # Water
-                            15,    # Cerebrospinal Fluid
-                            25,    # Muscle/Kidney
-                            40,    # Blood
-                            50,    # Liver
-                            200,   # Soft Tissue
-                            1000   # Bone
+                            -1000,
+                            # Air
+                            -900,
+                            # Lung
+                            -400,
+                            # ?
+                            -100,
+                            # Fat
+                            -50,
+                            # ?
+                            -10,
+                            # Water/Fluids
+                            20,
+                            # Muscle/Kidney
+                            40,
+                            # Liver/Blood
+                            60,
+                            # Acute (Clotted) Blood
+                            100,
+                            # Trabecular Bone
+                            800,
+                            # Cortical Bone
+                            1000
                             ])
+
 
 
 class LearnedClassVectors(nn.Module):
     def __init__(self, patch_size, out_dim, vector_dim, 
                  intensity_transform=None, 
-                 static_sincos=False, 
+                 sincos_emb=False,
                  final_layer=False, 
                  concat_vector=False,
                  linear_comb=False):
@@ -36,15 +62,21 @@ class LearnedClassVectors(nn.Module):
         self.vector_dim = vector_dim
         self.out_dim = out_dim
         self.voxels_per_patch = reduce(mul, self.patch_size)
-        self.static_sincos = static_sincos
+        self.sincos_emb = sincos_emb
         self.concat_vector = concat_vector
         self.linear_comb=linear_comb
 
+        if self.linear_comb:
+            self.org_intervals = HU_INTENSITY_INTERVALS_LC
+        else:
+            self.org_intervals = HU_INTENSITY_INTERVALS
+
         if not intensity_transform is None:
-            intensity_intervals = intensity_transform(HU_INTENSITY_INTERVALS)
+            intensity_intervals = intensity_transform(self.org_intervals)
             self.intensity_intervals = np.unique(intensity_intervals)
         else:
-            self.intensity_intervals = HU_INTENSITY_INTERVALS
+            self.intensity_intervals = self.org_intervals
+
         if self.linear_comb:
             self.n_vectors = len(self.intensity_intervals) - 1
         else:
@@ -58,27 +90,19 @@ class LearnedClassVectors(nn.Module):
         else:
             assert self.voxels_per_patch*self.vector_dim == self.out_dim
 
-
-
         self.vectors = nn.ParameterList()
         self.vectors_cls = nn.ParameterList()
         self.cls_val = -10000
 
-        if self.static_sincos:
-            sincos_emb = get_1d_sincos_embed_from_range(vector_dim, np.arange(self.n_vectors))
-
-        for i in range(self.n_vectors):
-            if self.static_sincos:
-                interval_param = nn.Parameter(torch.zeros(self.vector_dim), requires_grad=False)
-                interval_param.data.copy_(torch.from_numpy(sincos_emb[i]).float())
-                self.vectors.append(interval_param)
-            elif self.concat_vector:
-                interval_param = nn.Parameter(torch.zeros(self.vector_dim), requires_grad=False)
-                interval_param[i] = 1.0
-                self.vectors.append(interval_param)
-            else:
-                self.vectors.append(nn.Parameter(torch.randn(self.vector_dim)))
-            self.vectors_cls.append(nn.Parameter((torch.ones(1)*(i+1)*self.cls_val).repeat(self.vector_dim), requires_grad=False))
+        if not self.sincos_emb:
+            for i in range(self.n_vectors):
+                if self.concat_vector:
+                    interval_param = nn.Parameter(torch.zeros(self.vector_dim), requires_grad=False)
+                    interval_param[i] = 1.0
+                    self.vectors.append(interval_param)
+                else:
+                    self.vectors.append(nn.Parameter(torch.randn(self.vector_dim)))
+                self.vectors_cls.append(nn.Parameter((torch.ones(1)*(i+1)*self.cls_val).repeat(self.vector_dim), requires_grad=False))
 
         if self.linear_comb:
             self.vectorized_v_to_w = np.vectorize(self.voxel_to_weight)
@@ -90,6 +114,8 @@ class LearnedClassVectors(nn.Module):
 
         if self.linear_comb:
             voxel_vectors = self.create_voxel_vectors_linear_comb(x)  # n_patches * (Pd * Ph * Pw), vector_dim
+        elif self.sincos_emb:
+            voxel_vectors = self.create_voxel_vectors_sincos(x) # n_patches * (Pd * Ph * Pw), vector_dim
         else:
             voxel_vectors = self.create_voxel_vectors(x) # n_patches * (Pd * Ph * Pw), vector_dim
 
@@ -102,7 +128,6 @@ class LearnedClassVectors(nn.Module):
         else:
             patches = patches.permute(0, 2, 3, 4, 5, 6, 7, 1).contiguous() # B, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw, vector_dim
             patch_vectors = patches.flatten(4) # B, D/Pd, H/Ph, W/Pw, (Pd * Ph * Pw * vector_dim)
-
 
         if self.final_layer:
             patch_vectors = self.fc(patch_vectors)
@@ -125,6 +150,16 @@ class LearnedClassVectors(nn.Module):
             x = torch.where(x == (i+1)*-10000, self.vectors[i], x)
 
         return x
+
+    def create_voxel_vectors_sincos(self, x):
+        x = torch.clamp(x, min=self.intensity_intervals[0], max=self.intensity_intervals[-1])
+        x = x.flatten(0)
+        x = x.view(-1,1)
+
+        x = self.get_hu_sincos_embed(x)
+
+        return x
+
 
     def create_voxel_vectors_linear_comb(self, x):
         x = torch.clamp(x, min=self.intensity_intervals[0], max=self.intensity_intervals[-1])
@@ -167,3 +202,22 @@ class LearnedClassVectors(nn.Module):
             indx = indx + 1
         weight = (voxel - self.intensity_intervals[indx - 1]) / (self.intensity_intervals[indx] - self.intensity_intervals[indx - 1])
         return weight
+
+    def get_hu_sincos_embed(self, voxel_values):
+        """
+        voxel_values: Voxel values to be transformed into vectors
+        out: (vector_dim, 1)
+        """
+        assert self.vector_dim % 2 == 0
+        voxel_values = (voxel_values*2)-1
+
+        omega = 2 ** torch.arange(self.vector_dim // 2).float().cuda()
+
+        omega *= torch.pi
+        res = omega * voxel_values
+
+        emb_sin = torch.sin(res)  # (M, D/2)
+        emb_cos = torch.cos(res)  # (M, D/2)
+
+        emb = torch.concat([emb_sin, emb_cos], axis=0)  # (M, D)
+        return emb

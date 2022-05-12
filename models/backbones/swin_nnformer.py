@@ -464,7 +464,7 @@ class SwinTransformerNNFormer(nn.Module):
                  use_learned_cls_vectors=True,
                  lcv_transform=None,
                  lcv_vector_dim=6,
-                 lcv_static_sincos=False,
+                 lcv_sincos_emb=False,
                  lcv_final_layer=False,
                  lcv_concat_vector=False,
                  lcv_only=False,
@@ -500,7 +500,7 @@ class SwinTransformerNNFormer(nn.Module):
                                             out_dim=lcv_out_dim,
                                             vector_dim=lcv_vector_dim,
                                             intensity_transform=lcv_transform,
-                                            static_sincos=lcv_static_sincos,
+                                            sincos_emb=lcv_sincos_emb,
                                             final_layer=lcv_final_layer,
                                             concat_vector=lcv_concat_vector,
                                             linear_comb=lcv_linear_comb)
