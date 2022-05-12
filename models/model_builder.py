@@ -119,6 +119,7 @@ def build_model(cfg):
         )
         if cfg.learned_cls_vectors:
             print("LCV Intensity intervals: {}".format(encoder.lcv.intensity_intervals))
+            print("LCV onehot intervals: {}".format(encoder.lcv.interval_onehot))
         model = SwinUNETR(
             encoder,
             in_channels=cfg.in_chans,

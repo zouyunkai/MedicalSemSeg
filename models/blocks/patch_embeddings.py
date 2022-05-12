@@ -80,18 +80,24 @@ class LearnedClassVectors(nn.Module):
             intensity_intervals = self.org_intervals
         self.intensity_intervals = nn.Parameter(torch.from_numpy(intensity_intervals), requires_grad=False)
 
-        if self.sincos_emb:
-            self.n_intervals = len(self.intensity_intervals) - 1
-        elif self.linear_comb:
-            self.n_intervals = len(self.intensity_intervals)
-        else:
-            self.n_intervals = len(self.intensity_intervals) + 1
-
         # Temporary value to prevent overwriting vectors
         self.tmp_val = -1000
 
-        self.interval_onehot = nn.Parameter((torch.diag(torch.ones(self.n_intervals + 1)) + torch.diag(torch.ones(self.n_intervals),
-                                                                                     diagonal=1))[0:self.n_intervals]*self.tmp_val, requires_grad=False)
+        if self.sincos_emb:
+            self.n_intervals = len(self.intensity_intervals) - 1
+            self.interval_onehot = nn.Parameter(
+                (torch.diag(torch.ones(self.n_intervals + 1)) + torch.diag(torch.ones(self.n_intervals),
+                                                                           diagonal=1))[
+                0:self.n_intervals] * self.tmp_val, requires_grad=False)
+        elif self.linear_comb:
+            self.n_intervals = len(self.intensity_intervals)
+            self.interval_onehot = nn.Parameter(
+                (torch.diag(torch.ones(self.n_intervals)) + torch.diag(torch.ones(self.n_intervals -1),
+                                                                           diagonal=1))[
+                0:self.n_intervals -1] * self.tmp_val, requires_grad=False)
+        else:
+            self.n_intervals = len(self.intensity_intervals) + 1
+
 
         if self.final_layer and self.concat_vector:
             assert self.vector_dim == self.n_intervals
@@ -242,8 +248,13 @@ class LearnedClassVectors(nn.Module):
     def voxels_to_weights(self, x):
         x_copy = torch.clone(x)
 
+        if self.linear_comb:
+            intervals = self.n_intervals - 1
+        else:
+            intervals = self.n_intervals
+
         # Create interval vectors
-        for i in range(0, self.n_intervals):
+        for i in range(0, intervals):
             x = torch.where((x >= self.intensity_intervals[i]) & (x < self.intensity_intervals[i+1]),
                                self.interval_onehot[i], x)
         x = torch.where(x == self.intensity_intervals[-1], self.interval_onehot[-1], x)
