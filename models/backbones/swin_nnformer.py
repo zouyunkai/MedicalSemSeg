@@ -384,9 +384,7 @@ class PatchEmbed(nn.Module):
         if S % self.patch_size[0] != 0:
             x = F.pad(x, (0, 0, 0, 0, 0, self.patch_size[0] - S % self.patch_size[0]))
         x = self.proj1(x)  # B C Ws Wh Ww
-        print(x.shape)
         x = self.proj2(x)  # B C Ws Wh Ww
-        print(x.shape)
         if self.norm is not None:
             Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
             x = x.flatten(2).transpose(1, 2).contiguous()
