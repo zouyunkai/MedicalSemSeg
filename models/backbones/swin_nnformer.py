@@ -365,7 +365,7 @@ class PatchEmbed(nn.Module):
         self.in_chans = in_chans
         self.embed_dim = embed_dim
         stride1 = [patch_size[0] // 2, patch_size[1] // 2, patch_size[2] // 2]
-        stride2 = [patch_size[0] // 2, patch_size[1] // 2, patch_size[2] // 2]
+        stride2 = [patch_size[0], patch_size[1], patch_size[2]]
         self.proj1 = project(in_chans, embed_dim // 2, stride1, 1, nn.GELU, nn.LayerNorm, False)
         self.proj2 = project(embed_dim // 2, embed_dim, stride2, 1, nn.GELU, nn.LayerNorm, True)
         if norm_layer is not None:
@@ -482,11 +482,6 @@ class SwinTransformerNNFormer(nn.Module):
         self.lcv_concat_vector = lcv_concat_vector
         self.lcv_only = lcv_only
         # split image into non-overlapping patches
-        '''
-        self.patch_embed = PatchEmbed(
-            patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None)
-        '''
 
         pe_dim = embed_dim
         if use_learned_cls_vectors:
@@ -505,6 +500,7 @@ class SwinTransformerNNFormer(nn.Module):
                                             concat_vector=lcv_concat_vector,
                                             linear_comb=lcv_linear_comb)
         if not self.lcv_only:
+            '''
             self.patch_embed = PatchEmbed3D(
                 vol_size=pretrain_img_size,
                 patch_size=patch_size,
@@ -513,7 +509,10 @@ class SwinTransformerNNFormer(nn.Module):
                 norm_layer=norm_layer if self.patch_norm else None
             )
 
-
+            '''
+            self.patch_embed = PatchEmbed(
+                patch_size=patch_size, in_chans=in_chans, embed_dim=pe_dim,
+                norm_layer=norm_layer if self.patch_norm else None)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
