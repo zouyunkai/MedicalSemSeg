@@ -106,6 +106,8 @@ class LearnedClassVectors(nn.Module):
             self.fc = nn.Linear(self.vector_dim, self.out_dim)
         elif self.final_layer:
             self.fc = nn.Linear(self.voxels_per_patch * self.vector_dim, self.out_dim)
+        elif self.patch_voxel_mean:
+            assert self.vector_dim == out_dim
         else:
             assert self.voxels_per_patch*self.vector_dim == self.out_dim
 
@@ -136,7 +138,7 @@ class LearnedClassVectors(nn.Module):
 
         voxel_vectors = voxel_vectors.view(B, C, D, H, W, self.vector_dim).squeeze(1) # B, D, H, W, vector_dim assuming C=1
         voxel_vectors = voxel_vectors.permute(0, 4, 1, 2, 3).contiguous() # B, vector_dim, D, H, W
-        patches = voxel_vectors.view(B, self.vector_dim, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw) # B, vector_dim, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw
+        patches = voxel_vectors.view(B, self.vector_dim, D // Pd, H // Ph, W // Pw, Pd, Ph, Pw) # B, vector_dim, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw
         if self.concat_vector:
             patch_vectors = patches.sum(-1).sum(-1).sum(-1) # B, vector_dim, D/Pd, H/Ph, W/Pw
             patch_vectors = patch_vectors.permute(0, 2, 3, 4, 1).contiguous() # B, D/Pd, H/Ph, W/Pw, vector_dim
