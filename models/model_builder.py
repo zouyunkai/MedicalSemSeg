@@ -4,6 +4,7 @@ from monai.networks.nets import UNETR
 from models.backbones.swin_3d import SwinTransformer3D
 from models.backbones.swin_nnformer import SwinTransformerNNFormer
 from models.backbones.vit_mae import ViTMAE
+from models.segmentors.nnformer_official.nnformer_official import nnFormer
 from models.segmentors.swin_unetr import SwinUNETR
 from models.segmentors.unetr import UNETRC
 from models.segmentors.unetr_official import UNETROC
@@ -127,6 +128,16 @@ def build_model(cfg):
             img_size=cfg.vol_size,
             hidden_size=cfg.hidden_dim,
             patch_size=cfg.patch_size,
+        )
+    elif cfg.model == 'nnFormer':
+        model = nnFormer(
+            crop_size=cfg.vol_size,
+            embedding_dim=cfg.hidden_dim,
+            input_channels=cfg.in_chans,
+            num_classes=cfg.output_dim,
+            deep_supervision=False,
+            window_size=cfg.window_size,
+            patch_size=cfg.patch_size
         )
     return model
 

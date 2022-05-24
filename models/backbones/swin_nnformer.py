@@ -498,20 +498,17 @@ class SwinTransformerNNFormer(nn.Module):
                                             concat_vector=lcv_concat_vector,
                                             linear_comb=lcv_linear_comb)
         if not self.lcv_only:
-            '''
             self.patch_embed = PatchEmbed3D(
                 vol_size=pretrain_img_size,
                 patch_size=patch_size,
                 in_chans=in_chans,
                 embed_dim=pe_dim,
-                norm_layer=norm_layer if self.patch_norm else None
-            )
-
+                norm_layer=norm_layer if self.patch_norm else None)
             '''
             self.patch_embed = PatchEmbed(
                 patch_size=patch_size, in_chans=in_chans, embed_dim=pe_dim,
                 norm_layer=norm_layer if self.patch_norm else None)
-
+            '''
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
