@@ -95,6 +95,10 @@ def add_model_config_args(parser):
                        help='For every voxel, the vector for each voxel is a linear combination of the surrounding intervals.')
     group.set_defaults(lcv_linear_comb=False)
 
+    group.add_argument('--lcv_patch_voxel_mean', action='store_true',
+                       help='Create the patch vector as the mean of the voxel vectors')
+    group.set_defaults(lcv_patch_voxel_mean=False)
+
 
     return parser
 

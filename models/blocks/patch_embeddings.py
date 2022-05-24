@@ -55,7 +55,8 @@ class LearnedClassVectors(nn.Module):
                  sincos_emb=False,
                  final_layer=False, 
                  concat_vector=False,
-                 linear_comb=False):
+                 linear_comb=False,
+                 patch_voxel_mean=False):
 
         super().__init__()
 
@@ -67,6 +68,7 @@ class LearnedClassVectors(nn.Module):
         self.sincos_emb = sincos_emb
         self.concat_vector = concat_vector
         self.linear_comb=linear_comb
+        self.patch_voxel_mean = patch_voxel_mean
 
         if self.linear_comb:
             self.org_intervals = HU_INTENSITY_INTERVALS_LC
@@ -99,7 +101,7 @@ class LearnedClassVectors(nn.Module):
             self.n_intervals = len(self.intensity_intervals) + 1
 
 
-        if self.final_layer and self.concat_vector:
+        if self.final_layer and (self.concat_vector or self.patch_voxel_mean):
             assert self.vector_dim == self.n_intervals
             self.fc = nn.Linear(self.vector_dim, self.out_dim)
         elif self.final_layer:
@@ -134,10 +136,14 @@ class LearnedClassVectors(nn.Module):
 
         voxel_vectors = voxel_vectors.view(B, C, D, H, W, self.vector_dim).squeeze(1) # B, D, H, W, vector_dim assuming C=1
         voxel_vectors = voxel_vectors.permute(0, 4, 1, 2, 3).contiguous() # B, vector_dim, D, H, W
-        patches = voxel_vectors.unfold(2, Pd, Pd).unfold(3, Ph, Ph).unfold(4, Pw, Pw) # B, vector_dim, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw
+        patches = voxel_vectors.view(B, self.vector_dim, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw) # B, vector_dim, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw
         if self.concat_vector:
             patch_vectors = patches.sum(-1).sum(-1).sum(-1) # B, vector_dim, D/Pd, H/Ph, W/Pw
             patch_vectors = patch_vectors.permute(0, 2, 3, 4, 1).contiguous() # B, D/Pd, H/Ph, W/Pw, vector_dim
+        elif self.patch_voxel_mean:
+            patch_vectors = patches.sum(-1).sum(-1).sum(-1) # B, vector_dim, D/Pd, H/Ph, W/Pw
+            patch_vectors = patch_vectors.permute(0, 2, 3, 4, 1).contiguous() # B, D/Pd, H/Ph, W/Pw, vector_dim
+            patch_vectors = patch_vectors / (Pd * Ph * Pw)
         else:
             patches = patches.permute(0, 2, 3, 4, 5, 6, 7, 1).contiguous() # B, D/Pd, H/Ph, W/Pw, Pd, Ph, Pw, vector_dim
             patch_vectors = patches.flatten(4) # B, D/Pd, H/Ph, W/Pw, (Pd * Ph * Pw * vector_dim)
