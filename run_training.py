@@ -4,6 +4,7 @@ import os
 import time
 from pathlib import Path
 
+import monai
 import neptune.new as neptune
 import numpy as np
 import timm.optim.optim_factory as optim_factory
@@ -34,6 +35,7 @@ def main(cfg):
     seed = cfg.seed + misc.get_rank()
     torch.manual_seed(seed)
     np.random.seed(seed)
+    monai.utils.set_determinism(seed=0, additional_settings=None)
 
     # -- Setup config --
     cfg_dict = vars(cfg)
