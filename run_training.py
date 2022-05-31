@@ -35,7 +35,7 @@ def main(cfg):
     seed = cfg.seed + misc.get_rank()
     torch.manual_seed(seed)
     np.random.seed(seed)
-    monai.utils.set_determinism(seed=0, additional_settings=None)
+    monai.utils.set_determinism(seed=seed, additional_settings=None)
 
     # -- Setup config --
     cfg_dict = vars(cfg)
