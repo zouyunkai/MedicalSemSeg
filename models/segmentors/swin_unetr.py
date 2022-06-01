@@ -62,11 +62,13 @@ for 3D Medical Image Analysis"
 
 
         img_size = ensure_tuple_rep(img_size, spatial_dims)
+        self.img_size = img_size
         self.patch_size = ensure_tuple_rep(patch_size, spatial_dims)
         self.feat_size = tuple(img_d // p_d for img_d, p_d in zip(img_size, self.patch_size))
         self.hidden_size = hidden_size
         self.classification = False
         self.swin = encoder
+        self.fl_out_size =  (self.img_size[0]//(2**5), self.img_size[1]//(2**5), self.img_size[2]//(2**5))
 
         self.encoder0 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
@@ -189,7 +191,8 @@ for 3D Medical Image Analysis"
         x0, x1, x3, x5, x7 = z
         x7 = x7.flatten(2).transpose(1, 2)
         x7 = self.bottleneck(x7)
-        x7 = x7.transpose(1, 2).view(-1, self.hidden_size*16, 3, 3, 3)
+        x7 = x7.transpose(1, 2).view(-1, self.hidden_size*16,
+                                     self.fl_out_size[0], self.fl_out_size[1], self.fl_out_size[2])
 
         dec4 = self.decoder4(x7, self.encoder4(x5))
         dec3 = self.decoder3(dec4, self.encoder3(x3))
