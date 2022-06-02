@@ -87,7 +87,7 @@ def main(cfg):
     param_groups = optim_factory.add_weight_decay(model_without_ddp, cfg.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95))
     print(optimizer)
-    loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision)
+    loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision, init_scale=1024)
     scheduler = LinearWarmupCosineAnnealingLR(optimizer,
                                               warmup_epochs=args.warmup_epochs,
                                               max_epochs=args.epochs)
