@@ -14,7 +14,7 @@ import utils.misc as misc
 def train_one_epoch(
             model, data_loader,
             optimizer, criterion, device, epoch,
-            loss_scaler, cfg, scheduler, log_writer=None):
+            loss_scaler, cfg, log_writer=None):
     model.train()
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -95,7 +95,6 @@ def train_one_epoch(
 
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
-        scheduler.step(epoch + data_iter_step/iters)
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         if log_writer is not None:

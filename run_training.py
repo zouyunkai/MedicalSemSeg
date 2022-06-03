@@ -14,13 +14,13 @@ from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 import utils.misc as misc
 from data.dataset_builder import build_train_and_val_datasets
 from engine.train import train_one_epoch
 from engine.val import run_validation
 from models.model_builder import build_model
+from models.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from utils.arguments import get_args
 
 
@@ -88,10 +88,9 @@ def main(cfg):
     optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95), eps=1e-6)
     print(optimizer)
     loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision, init_scale=4096)
-    #scheduler = LinearWarmupCosineAnnealingLR(optimizer,
-    #                                          warmup_epochs=args.warmup_epochs,
-    #                                          max_epochs=args.epochs)
-    scheduler = CosineAnnealingWarmRestarts(optimizer, 500)
+    scheduler = LinearWarmupCosineAnnealingLR(optimizer,
+                                              warmup_epochs=args.warmup_epochs,
+                                              max_epochs=args.epochs)
 
     misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
                     scheduler=scheduler)
@@ -124,7 +123,7 @@ def main(cfg):
         train_stats = train_one_epoch(
             model, data_loader_train,
             optimizer, criterion, device, epoch,
-            loss_scaler, cfg, scheduler, log_writer=log_writer)
+            loss_scaler, cfg, log_writer=log_writer)
         log_stats = {**{f'{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }
 
@@ -153,7 +152,7 @@ def main(cfg):
             with open(os.path.join(cfg.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
-        #scheduler.step()
+        scheduler.step()
         #dataset_train.update_cache()
     #dataset_train.shutdown()
     total_time = time.time() - start_time
