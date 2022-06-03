@@ -65,8 +65,7 @@ def build_training_transforms(cfg):
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="label",
-                k_divisible=cfg.vol_size[0]
+                source_key="image"
         ))
     if cfg.t_spatial_pad:
         transforms.append(
@@ -108,8 +107,8 @@ def build_training_transforms(cfg):
             )
         )
     elif cfg.t_rand_crop_classes:
-        ratio = np.array([1] * cfg.output_dim)
-        #ratio[1:cfg.output_dim] = ratio[1:cfg.output_dim] + 1
+        ratio = np.array([0] * cfg.output_dim)
+        ratio[1:cfg.output_dim] = ratio[1:cfg.output_dim] + 1
         transforms.append(
             monai.transforms.RandCropByLabelClassesd(
                 keys=["image", "label"],
