@@ -190,8 +190,8 @@ for 3D Medical Image Analysis"
                 stride=1,
                 upsample_kernel_size=2,
                 norm_name=norm_name,
-                conv_block=True,
-                res_block=True
+                conv_block=False,
+                res_block=False
             )
             self.encoder0 = UnetrBasicBlock(
                 spatial_dims=spatial_dims,
