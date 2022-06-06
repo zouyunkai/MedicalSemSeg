@@ -184,7 +184,7 @@ for 3D Medical Image Analysis"
             self.decoderds = UnetrPrUpBlock(
                 spatial_dims=spatial_dims,
                 in_channels=hidden_size,
-                out_channels=hidden_size // 4,
+                out_channels=hidden_size // 16,
                 num_layer=1,
                 kernel_size=3,
                 stride=1,
@@ -196,7 +196,7 @@ for 3D Medical Image Analysis"
             self.encoder0 = UnetrBasicBlock(
                 spatial_dims=spatial_dims,
                 in_channels=in_channels,
-                out_channels=hidden_size // 8,
+                out_channels=hidden_size // 16,
                 kernel_size=3,
                 stride=1,
                 norm_name=norm_name,
@@ -204,14 +204,14 @@ for 3D Medical Image Analysis"
             )
             self.decoder0 = UnetrUpBlock(
                 spatial_dims=spatial_dims,
-                in_channels=hidden_size // 4,
-                out_channels=hidden_size // 8,
+                in_channels=hidden_size // 16,
+                out_channels=hidden_size // 16,
                 kernel_size=3,
                 upsample_kernel_size=2,
                 norm_name=norm_name,
                 res_block=True,
             )
-            self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size // 8, out_channels=out_channels)
+            self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size // 16, out_channels=out_channels)
 
     def proj_feat(self, x):
         new_view = [x.size(0)] + self.proj_view_shape
