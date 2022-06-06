@@ -211,7 +211,7 @@ for 3D Medical Image Analysis"
                 norm_name=norm_name,
                 res_block=True,
             )
-            self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
+            self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size // 8, out_channels=out_channels)
 
     def proj_feat(self, x):
         new_view = [x.size(0)] + self.proj_view_shape
