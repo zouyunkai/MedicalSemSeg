@@ -19,7 +19,7 @@ from monai.utils import ensure_tuple_rep
 from models.backbones.vit_mae import Block
 
 
-class SwinUNETR(nn.Module):
+class SwinUNETRCustom(nn.Module):
     """
     Swin-UNETR based on: "Yucheng et al.,
     Self-Supervised Pre-Training of Swin Transformers

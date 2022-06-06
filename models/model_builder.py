@@ -5,7 +5,8 @@ from models.backbones.swin_3d import SwinTransformer3D
 from models.backbones.swin_nnformer import SwinTransformerNNFormer
 from models.backbones.vit_mae import ViTMAE
 from models.segmentors.nnformer_official.nnformer_official import nnFormer
-from models.segmentors.swin_unetr import SwinUNETR
+from models.segmentors.swin_unetr import SwinUNETRCustom
+from models.segmentors.swin_unetr_official import SwinUNETR
 from models.segmentors.unetr import UNETRC
 from models.segmentors.unetr_official import UNETROC
 
@@ -63,6 +64,20 @@ def build_model(cfg):
             res_block=True,
             dropout_rate=0.0,
         )
+    elif cfg.model == 'OfficialSwinUNETR':
+        model = SwinUNETR(
+            img_size=cfg.vol_size,
+            in_channels=cfg.in_chans,
+            out_channels=cfg.output_dim,
+            depths=(2, 2, 2, 2),
+            num_heads=(3, 6, 12, 24),
+            feature_size=cfg.hidden_dim,
+            norm_name="instance",
+            drop_rate=0.0,
+            attn_drop_rate=0.0,
+            dropout_path_rate=0.0,
+            use_checkpoint=False,
+        )
     elif cfg.model == 'SwinUNETR':
         encoder = SwinTransformer3D(
             vol_size=cfg.vol_size,
@@ -74,7 +89,7 @@ def build_model(cfg):
             window_size=cfg.window_size,
             qkv_bias=cfg.qkv_bias
         )
-        model = SwinUNETR(
+        model = SwinUNETRCustom(
             encoder,
             in_channels=cfg.in_chans,
             out_channels=cfg.output_dim,
@@ -122,7 +137,7 @@ def build_model(cfg):
         if cfg.learned_cls_vectors:
             print("LCV Intensity intervals: {}".format(encoder.lcv.intensity_intervals))
             print("LCV onehot intervals: {}".format(encoder.lcv.interval_onehot))
-        model = SwinUNETR(
+        model = SwinUNETRCustom(
             encoder,
             in_channels=cfg.in_chans,
             out_channels=cfg.output_dim,
