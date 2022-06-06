@@ -129,6 +129,7 @@ def build_model(cfg):
             img_size=cfg.vol_size,
             hidden_size=cfg.hidden_dim,
             patch_size=cfg.patch_size,
+            input_downsampled=cfg.downsample_volume
         )
     elif cfg.model == 'nnFormer':
         model = nnFormer(

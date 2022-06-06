@@ -99,6 +99,9 @@ def add_model_config_args(parser):
                        help='Create the patch vector as the mean of the voxel vectors')
     group.set_defaults(lcv_patch_voxel_mean=False)
 
+    group.add_argument('--downsample_volume', action='store_true',
+                       help='When downsampling is active, the transforms crop the volume to a larger size and that volume is then downsampled to vol_size in a larger patch embedding')
+    group.set_defaults(downsample_volume=False)
 
     return parser
 
@@ -128,6 +131,9 @@ def add_transform_config_args(parser):
     group.add_argument('--t_crop_foreground', action='store_true',
                        help='Crop volumes of space that consists of background only')
     group.set_defaults(t_crop_foreground=False)
+    group.add_argument('--t_sample_background', action='store_true',
+                       help='If background voxels should be used as centers during random cropping')
+    group.set_defaults(t_sample_background=False)
     group.add_argument('--t_rand_crop_fgbg', action='store_true',
                        help='Crop subvolumes based on foreground/background')
     group.set_defaults(t_rand_crop_fgbg=False)

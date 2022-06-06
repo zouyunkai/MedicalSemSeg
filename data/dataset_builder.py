@@ -94,21 +94,30 @@ def build_training_transforms(cfg):
     else:
         labelkey = 'label'
     if cfg.t_rand_crop_fgbg:
+        if cfg.t_sample_background:
+            pos = 1
+            neg = 1
+        else:
+            pos = 1
+            neg = 0
         transforms.append(
             monai.transforms.RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key=labelkey,
                 spatial_size=cfg.vol_size,
-                pos=1,
-                neg=1,
+                pos=pos,
+                neg=neg,
                 num_samples=cfg.t_n_patches_per_image,
                 image_key="image",
                 image_threshold=0,
             )
         )
     elif cfg.t_rand_crop_classes:
-        ratio = np.array([0] * cfg.output_dim)
-        ratio[1:cfg.output_dim] = ratio[1:cfg.output_dim] + 1
+        if cfg.t_sample_background:
+            ratio = np.array([1] * cfg.output_dim)
+        else:
+            ratio = np.array([0] * cfg.output_dim)
+            ratio[1:cfg.output_dim] = ratio[1:cfg.output_dim] + 1
         transforms.append(
             monai.transforms.RandCropByLabelClassesd(
                 keys=["image", "label"],
