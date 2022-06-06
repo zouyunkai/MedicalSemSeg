@@ -13,7 +13,7 @@ from typing import Sequence, Tuple, Union
 
 import torch.nn as nn
 from monai.networks.blocks.dynunet_block import UnetOutBlock
-from monai.networks.blocks.unetr_block import UnetrBasicBlock, UnetrUpBlock, UnetrPrUpBlock
+from monai.networks.blocks.unetr_block import UnetrBasicBlock, UnetrUpBlock
 from monai.utils import ensure_tuple_rep
 
 from models.backbones.vit_mae import Block
@@ -181,6 +181,7 @@ for 3D Medical Image Analysis"
         self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
 
         if self.input_downsampled:
+            '''
             self.decoderds = UnetrPrUpBlock(
                 spatial_dims=spatial_dims,
                 in_channels=hidden_size,
@@ -193,6 +194,7 @@ for 3D Medical Image Analysis"
                 conv_block=False,
                 res_block=False
             )
+            '''
             self.encoder0 = UnetrBasicBlock(
                 spatial_dims=spatial_dims,
                 in_channels=in_channels,
@@ -204,10 +206,10 @@ for 3D Medical Image Analysis"
             )
             self.decoder0 = UnetrUpBlock(
                 spatial_dims=spatial_dims,
-                in_channels=hidden_size // 16,
+                in_channels=hidden_size,
                 out_channels=hidden_size // 16,
                 kernel_size=3,
-                upsample_kernel_size=2,
+                upsample_kernel_size=8,
                 norm_name=norm_name,
                 res_block=True,
             )
@@ -231,9 +233,5 @@ for 3D Medical Image Analysis"
         dec3 = self.decoder3(dec4, self.encoder3(x3))
         dec2 = self.decoder2(dec3, self.encoder2(x1))
         dec1 = self.decoder1(dec2, self.encoder1(x0))
-        if self.input_downsampled:
-            decds = self.decoderds(dec1)
-            dec0 = self.decoder0(decds, self.encoder0(x_in))
-        else:
-            dec0 = self.decoder0(dec1, self.encoder0(x_in))
+        dec0 = self.decoder0(dec1, self.encoder0(x_in))
         return self.out(dec0)
