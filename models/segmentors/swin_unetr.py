@@ -65,7 +65,6 @@ for 3D Medical Image Analysis"
         img_size = ensure_tuple_rep(img_size, spatial_dims)
         self.img_size = img_size
         self.patch_size = ensure_tuple_rep(patch_size, spatial_dims)
-        self.feat_size = tuple(img_d // p_d for img_d, p_d in zip(self.img_size, self.patch_size))
         self.hidden_size = hidden_size
         self.classification = False
         self.swin = encoder
@@ -174,11 +173,18 @@ for 3D Medical Image Analysis"
             res_block=True,
         )
 
+        #self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
+        #self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
+        #self.bottleneck = nn.Linear(3**3*hidden_size*16, 3**3*hidden_size*16)
+        self.bottleneck = Block(dim=hidden_size * 16, num_heads=8, qkv_bias=True)
+
+        self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
+
         if self.input_downsampled:
             self.decoderds = UnetrPrUpBlock(
                 spatial_dims=spatial_dims,
                 in_channels=hidden_size,
-                out_channels=hidden_size,
+                out_channels=hidden_size // 4,
                 num_layer=1,
                 kernel_size=3,
                 stride=1,
@@ -187,15 +193,25 @@ for 3D Medical Image Analysis"
                 conv_block=True,
                 res_block=True
             )
-
-        #self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
-        #self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
-        #self.bottleneck = nn.Linear(3**3*hidden_size*16, 3**3*hidden_size*16)
-        self.bottleneck = Block(dim=hidden_size * 16, num_heads=8, qkv_bias=True)
-
-        self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
-        self.proj_axes = (0, spatial_dims + 1) + tuple(d + 1 for d in range(spatial_dims))
-        self.proj_view_shape = list(self.feat_size) + [self.hidden_size]
+            self.encoder0 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=in_channels,
+                out_channels=hidden_size // 8,
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
+            self.decoder0 = UnetrUpBlock(
+                spatial_dims=spatial_dims,
+                in_channels=hidden_size // 4,
+                out_channels=hidden_size // 8,
+                kernel_size=3,
+                upsample_kernel_size=2,
+                norm_name=norm_name,
+                res_block=True,
+            )
+            self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
 
     def proj_feat(self, x):
         new_view = [x.size(0)] + self.proj_view_shape
