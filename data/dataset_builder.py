@@ -13,7 +13,7 @@ from monai.data import (
 from scipy import ndimage
 
 from data.transforms import ScaleCubedIntensityRanged
-from utils.misc import get_world_size, is_main_process, get_rank
+from utils.misc import get_world_size, is_main_process, get_rank, save_decathlon_datalist
 
 
 def build_training_transforms(cfg):
@@ -336,6 +336,7 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
     if is_main_process():
         print("Number of files in training cv split: {}".format(len(train_files)))
         print("Number of files in val cv split: {}".format(len(val_files)))
+        save_decathlon_datalist(data_json, train_files, val_files, cfg.log_dir)
 
     # Split for GPU's
     partition_train = partition_dataset(data=train_files,

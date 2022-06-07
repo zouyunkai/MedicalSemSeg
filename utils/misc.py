@@ -1,6 +1,8 @@
 import builtins
 import datetime
+import json
 import os
+import re
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -367,3 +369,37 @@ class no_op(object):
 
     def __exit__(self, *args):
         pass
+
+def save_decathlon_datalist(org_json_path, train_files, val_files, log_dir):
+    jsonf = open(org_json_path)
+    json_data = json.load(jsonf)
+
+    train_files_fixed = []
+    val_files_fixed = []
+
+    for tf in train_files:
+        train_files_fixed.append(clean_strings(tf))
+
+    for vf in val_files:
+        val_files_fixed.append(clean_strings(vf))
+
+    json_data['training'] = train_files_fixed
+    json_data['validation'] = val_files_fixed
+    json_data['numTraining'] = len(train_files_fixed)
+    json_data['numValidation'] = len(val_files_fixed)
+
+    with open(os.path.join(log_dir, 'dataset_split.json'), 'w') as fp:
+        json.dump(json_data, fp, indent=4)
+
+
+
+def clean_strings(dict_obj):
+    clean_string_img = re.sub(r'^.*?imagesTr', './imagesTr', dict_obj['image'])
+    clean_string_img = re.sub(r'\\', '/', clean_string_img)
+
+    clean_string_label = re.sub(r'^.*?labelsTr', './labelsTr', dict_obj['label'])
+    clean_string_label = re.sub(r'\\', '/', clean_string_label)
+
+    clean_data = {'image': clean_string_img, 'label': clean_string_label}
+
+    return clean_data
