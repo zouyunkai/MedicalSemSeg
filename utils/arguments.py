@@ -221,6 +221,7 @@ def add_training_config_args(parser):
     group.add_argument('--val_interval', default=20, type=int)
     group.add_argument('--cv_fold', default=0, type=int, help='Current fold for cross validation')
     group.add_argument('--cv_max_folds', default=5, type=int, help='Max folds for cross validation')
+    group.add_argument('--val_infer_overlap', default=0.5, type=float, help='Overlap between each sliding window in validation')
 
 
     # distributed training parameters

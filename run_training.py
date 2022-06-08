@@ -105,7 +105,7 @@ def main(cfg):
     inferer = SlidingWindowInferer(
         roi_size=cfg.vol_size,
         sw_batch_size=cfg.batch_size_val,
-        overlap=0.5,
+        overlap=cfg.val_infer_overlap,
         mode='gaussian',
         cval=air_cval
     )
