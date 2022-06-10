@@ -127,7 +127,7 @@ def main(cfg):
         log_stats = {**{f'{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }
 
-        if not(epoch % cfg.val_interval):
+        if not((epoch+1) % cfg.val_interval):
             torch.cuda.empty_cache()
             if args.distributed:
                 torch.distributed.barrier()
