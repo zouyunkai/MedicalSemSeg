@@ -67,8 +67,8 @@ def run_validation(inferer,
         metric_logger.update(mHdorffDist=hdorf_dist.item())
         metric_logger.update(mDice=mDice.item())
         for c in range(cfg.output_dim):
-            if dice_not_nans[0][c] > 0:
-                class_dice = dice_scores[0][c].item()
+            if dice_not_nans[:,c].sum() > 0:
+                class_dice = dice_scores[:,c].nanmean()
             else:
                 class_dice = None
             keyword_args = {'class' + str(c) + 'Dice': class_dice}
