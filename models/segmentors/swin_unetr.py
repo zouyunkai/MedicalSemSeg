@@ -105,7 +105,6 @@ for 3D Medical Image Analysis"
             norm_name=norm_name,
             res_block=True,
         )
-        '''
         self.encoder4 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
             in_channels=hidden_size * 8,
@@ -115,7 +114,6 @@ for 3D Medical Image Analysis"
             norm_name=norm_name,
             res_block=True,
         )
-        '''
         self.encoder5 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
             in_channels=hidden_size * 16,
@@ -204,7 +202,7 @@ for 3D Medical Image Analysis"
         z = self.swin(x_in)
         x0, x1, x3, x5, x7 = z
 
-        dec4 = self.decoder4(self.encoder5(x7), x5)
+        dec4 = self.decoder4(self.encoder5(x7), self.encoder4(x5))
         dec3 = self.decoder3(dec4, self.encoder3(x3))
         dec2 = self.decoder2(dec3, self.encoder2(x1))
         dec1 = self.decoder1(dec2, self.encoder1(x0))
