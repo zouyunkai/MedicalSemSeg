@@ -128,9 +128,12 @@ def add_transform_config_args(parser):
     group.add_argument('--t_ct_max', default=1000, type=int,
                        help='The maximum CT intensity value to clip to')
 
-    group.add_argument('--t_crop_foreground', action='store_true',
-                       help='Crop volumes of space that consists of background only')
-    group.set_defaults(t_crop_foreground=False)
+    group.add_argument('--t_crop_foreground_img', action='store_true',
+                       help='Crop volumes of space that consists of air')
+    group.set_defaults(t_crop_foreground_img=False)
+    group.add_argument('--t_crop_foreground_label', action='store_true',
+                       help='Crop volumes of space that consists of background labels')
+    group.set_defaults(t_crop_foreground_label=False)
     group.add_argument('--t_sample_background', action='store_true',
                        help='If background voxels should be used as centers during random cropping')
     group.set_defaults(t_sample_background=False)

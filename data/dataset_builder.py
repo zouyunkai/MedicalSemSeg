@@ -61,11 +61,18 @@ def build_training_transforms(cfg):
                 relative=False
             )
         )
-    if cfg.t_crop_foreground:
+    if cfg.t_crop_foreground_img:
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
                 source_key="image"
+        ))
+    if cfg.t_crop_foreground_label:
+        transforms.append(
+            monai.transforms.CropForegroundd(
+                keys=["image", "label"],
+                source_key="label",
+                k_divisible=cfg.vol_size[0]
         ))
     if cfg.t_spatial_pad:
         transforms.append(
@@ -240,11 +247,11 @@ def build_validation_transforms(cfg):
                 relative=False
             )
         )
-    if cfg.t_crop_foreground:
+    if cfg.t_crop_foreground_img:
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="label"
+                source_key="image"
         ))
     if cfg.t_spatial_pad:
         transforms.append(
