@@ -92,7 +92,7 @@ class MetricLogger(object):
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            if v is None:
+            if v is None or v is np.nan:
                 continue
             if isinstance(v, torch.Tensor):
                 v = v.item()
