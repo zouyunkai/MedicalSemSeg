@@ -1,6 +1,7 @@
 import math
 import sys
 
+import numpy as np
 import torch
 from monai.data import decollate_batch
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
