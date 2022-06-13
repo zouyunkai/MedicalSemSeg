@@ -187,6 +187,8 @@ def add_data_config_args(parser):
 
     group.add_argument('--data_path', default='/datasets/', type=str,
                         help='Dataset path')
+    group.add_argument('--json_list', default='dataset.json', type=str,
+                       help='Json file containing the list of dataset files in Decathlon format')
     group.add_argument('--task', default='Task03_Liver', type=str, help='The Decathlon task to finetune on.')
     group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
     group.add_argument('--n_images_per_batch', type=int, default=8, help='Number of unique images per batch to pull patches from. Total Batch size is n_images_per_batch * t_n_samples_per_image.')
@@ -251,6 +253,7 @@ def add_misc_config_args(parser):
     group.add_argument('--no_neptune_logging', action='store_false', dest='neptune_logging',
                        help='If online logging to neptune should be disabled')
     group.set_defaults(neptune_logging=True)
+    group.add_argument('--save_eval_output', action='store_true', help='If evaluated volumes should be saved on disk')
     group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
     group.add_argument('--description', type=str, help='The description of the experiment, used for Neptune logging.')
 

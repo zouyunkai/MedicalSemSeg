@@ -420,3 +420,12 @@ def build_train_and_val_datasets(cfg):
     else:
         dataset_train, dataset_val = build_decathlon_cv_datasets(cfg, train_transform, val_transform)
     return dataset_train, dataset_val
+
+def build_eval_dataset(cfg):
+    eval_transform = build_validation_transforms(cfg)
+    data_json = os.path.join(cfg.data_path, cfg.task, cfg.json_list)
+    data_files = load_decathlon_datalist(data_json, True, 'validation')
+    print(data_files)
+    eval_ds = Dataset(data=data_files, transform=eval_transform)
+
+    return eval_ds

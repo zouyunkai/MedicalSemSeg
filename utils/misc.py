@@ -233,13 +233,16 @@ def init_distributed_mode(cfg):
         os.environ['RANK'] = str(cfg.rank)
         os.environ['WORLD_SIZE'] = str(cfg.world_size)
         # ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "LOCAL_RANK"]
+        print("Using OpenMPI distributed settings")
     elif 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         cfg.rank = int(os.environ["RANK"])
         cfg.world_size = int(os.environ['WORLD_SIZE'])
         cfg.gpu = int(os.environ['LOCAL_RANK'])
+        print("Using distributed settings from environment variables")
     elif 'SLURM_PROCID' in os.environ:
         cfg.rank = int(os.environ['SLURM_PROCID'])
         cfg.gpu = cfg.rank % torch.cuda.device_count()
+        print("Using slurm distributed settings")
     else:
         print('Not using distributed mode')
         setup_for_distributed(is_master=True)  # hack
