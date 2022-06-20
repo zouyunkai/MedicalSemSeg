@@ -55,13 +55,19 @@ def train_one_epoch(
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
-        # Backwards step using loss scaler
+        # Backwards step using loss scaler.
+        # If scaler is disabled this acts as a simple backwards pass on loss as loss_scaler.scale(loss)
+        # simply returns the loss in that scenario
         loss_scaler.scale(loss).backward()
 
         if cfg.gradient_clipping is not None:
+            # Unscale here is recorded by the scaler and thus is not performed again in the upcoming step
+            # If scaler is disabled then this is a no-op
             loss_scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.gradient_clipping)
+        # If scaler is disabled, returns optimizer.step()
         loss_scaler.step(optimizer)
+        # If scaled is disabled then this is a no-op
         loss_scaler.update()
 
         optimizer.zero_grad()

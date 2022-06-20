@@ -11,10 +11,11 @@ from torch import autograd
 import utils.misc as misc
 
 
-def eval_model(inferer, model, data_loader, device, cfg, log_writer=None):
+def eval_model(inferer, model, data_loader, criterion, device, cfg, log_writer=None):
     model.eval()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
+    metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     for c in range(cfg.output_dim):
@@ -43,6 +44,7 @@ def eval_model(inferer, model, data_loader, device, cfg, log_writer=None):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
                 outputs = inferer(inputs=inputs, network=model)
+                loss = criterion(outputs.cpu(), labels.cpu())
 
         labels_list = decollate_batch(labels)
         labels_convert = [post_label(label_tensor) for label_tensor in labels_list]
@@ -64,7 +66,9 @@ def eval_model(inferer, model, data_loader, device, cfg, log_writer=None):
             metric_logger.update(**keyword_args)
 
         mDice = class_means.nanmean()
+        loss_value = loss.item()
 
+        metric_logger.update(loss=loss_value)
         metric_logger.update(mHdorffDist=hdorf_dist.item())
         metric_logger.update(mDice=mDice.item())
 
@@ -72,10 +76,16 @@ def eval_model(inferer, model, data_loader, device, cfg, log_writer=None):
         haus_dist_metric.reset()
 
         if cfg.save_eval_output:
+            # Save pred
             outputs_formatted = torch.softmax(outputs, 1).cpu().numpy()
             outputs_formatted = np.argmax(outputs_formatted, axis=1).astype(np.uint8)[0]
             nib.save(nib.Nifti1Image(outputs_formatted.astype(np.uint8), original_affine),
-                     os.path.join(cfg.output_dir, img_name))
+                     os.path.join(cfg.output_dir, 'pred_' + img_name))
+            # Save transformed image
+            nib.save(nib.Nifti1Image(inputs.squeeze().cpu().numpy(), original_affine), os.path.join(cfg.output_dir, 'img_' + img_name))
+            # Save transformed label
+            nib.save(nib.Nifti1Image(labels.squeeze().cpu().numpy(), original_affine),
+                     os.path.join(cfg.output_dir, 'gt_' + img_name))
 
     # gather the stats from all processes
     print("Evaluation averaged stats:", metric_logger.log_all_average())

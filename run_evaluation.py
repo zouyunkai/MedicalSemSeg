@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from monai.data import ThreadDataLoader
 from monai.inferers import SlidingWindowInferer
+from monai.losses import DiceCELoss
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
 
@@ -49,6 +50,8 @@ def main(cfg):
         drop_last=False,
     )
 
+    criterion = DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True)
+
     # Setup model
     model = build_model(cfg)
     model.to(device)
@@ -73,7 +76,7 @@ def main(cfg):
     # Run evaluation
     start_time = time.time()
 
-    eval_metrics = eval_model(inferer, model, data_loader_eval, device, cfg, log_writer=log_writer)
+    eval_metrics = eval_model(inferer, model, data_loader_eval, criterion, device, cfg, log_writer=log_writer)
     log_stats = {**{f'{k}': v for k, v in eval_metrics.items()}}
     if cfg.output_dir:
         if log_writer is not None:
