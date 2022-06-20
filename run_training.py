@@ -96,11 +96,14 @@ def main(cfg):
                     scheduler=scheduler)
 
     if cfg.loss_fn == 'DiceCE':
-        criterion = DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True)
+        criterion = DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, smooth_nr=cfg.smooth_nr,
+                               smooth_dr=cfg.smooth_dr)
     elif cfg.loss_fn == 'Tversky':
-        criterion = TverskyLoss(to_onehot_y=True, softmax=True)
+        criterion = TverskyLoss(to_onehot_y=True, softmax=True, alpha=cfg.tversky_alpha, beta=cfg.tversky_beta,
+                                smooth_nr=cfg.smooth_nr, smooth_dr=cfg.smooth_dr)
     elif cfg.loss_fn == 'DiceFocal':
-        criterion = DiceFocalLoss(to_onehot_y=True, softmax=True, squared_pred=True)
+        criterion = DiceFocalLoss(to_onehot_y=True, softmax=True, squared_pred=True, smooth_nr=cfg.smooth_nr,
+                                  smooth_dr=cfg.smooth_dr)
     else:
         raise RuntimeError('Could not parse loss function argument.')
 

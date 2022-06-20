@@ -210,6 +210,14 @@ def add_optimizer_config_args(parser):
 
     group.add_argument('--loss_fn', type=str, default='DiceCE',
                        help='The name of the loss function to use. Available options: DiceCE, DiceFocal and Tversky')
+    group.add_argument('--tversky_alpha', type=float, default=0.5,
+                       help='Weight for false positives. When both alpha and beta is 0.5, Tversky loss is identical to Dice loss.')
+    group.add_argument('--tversky_beta', type=float, default=0.5,
+                       help='Weight for false negatives. When both alpha and beta is 0.5, Tversky loss is identical to Dice loss.')
+    group.add_argument('--smooth_nr', type=float, default=1e-5,
+                       help='Smoothing factor for numerator in Dice loss to avoid 0')
+    group.add_argument('--smooth_dr', type=float, default=1e-5,
+                       help='Smoothing factor for denominator in Dice loss to avoid nan')
     group.add_argument('--weight_decay', type=float, default=1e-5,
                         help='weight decay (default: 0.05)')
     group.add_argument('--lr', type=float, default=4e-4, metavar='LR',
