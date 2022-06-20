@@ -13,7 +13,7 @@ from monai.data import (
 from scipy import ndimage
 
 from data.transforms import ScaleCubedIntensityRanged
-from utils.misc import get_world_size, is_main_process, get_rank
+from utils.misc import get_world_size, is_main_process, get_rank, save_decathlon_datalist
 
 
 def build_training_transforms(cfg):
@@ -61,11 +61,18 @@ def build_training_transforms(cfg):
                 relative=False
             )
         )
-    if cfg.t_crop_foreground:
+    if cfg.t_crop_foreground_img:
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="label"
+                source_key="image"
+        ))
+    if cfg.t_crop_foreground_label:
+        transforms.append(
+            monai.transforms.CropForegroundd(
+                keys=["image", "label"],
+                source_key="label",
+                k_divisible=cfg.vol_size[0]
         ))
     if cfg.t_spatial_pad:
         transforms.append(
@@ -94,21 +101,30 @@ def build_training_transforms(cfg):
     else:
         labelkey = 'label'
     if cfg.t_rand_crop_fgbg:
+        if cfg.t_sample_background:
+            pos = 1
+            neg = 1
+        else:
+            pos = 1
+            neg = 0
         transforms.append(
             monai.transforms.RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key=labelkey,
                 spatial_size=cfg.vol_size,
-                pos=1,
-                neg=1,
+                pos=pos,
+                neg=neg,
                 num_samples=cfg.t_n_patches_per_image,
                 image_key="image",
                 image_threshold=0,
             )
         )
     elif cfg.t_rand_crop_classes:
-        ratio = np.array([0] * cfg.output_dim)
-        ratio[1:cfg.output_dim] = ratio[1:cfg.output_dim] + 1
+        if cfg.t_sample_background:
+            ratio = np.array([1] * cfg.output_dim)
+        else:
+            ratio = np.array([0] * cfg.output_dim)
+            ratio[1:cfg.output_dim] = ratio[1:cfg.output_dim] + 1
         transforms.append(
             monai.transforms.RandCropByLabelClassesd(
                 keys=["image", "label"],
@@ -231,11 +247,11 @@ def build_validation_transforms(cfg):
                 relative=False
             )
         )
-    if cfg.t_crop_foreground:
+    if cfg.t_crop_foreground_img:
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="label"
+                source_key="image"
         ))
     if cfg.t_spatial_pad:
         transforms.append(
@@ -327,6 +343,7 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
     if is_main_process():
         print("Number of files in training cv split: {}".format(len(train_files)))
         print("Number of files in val cv split: {}".format(len(val_files)))
+        save_decathlon_datalist(data_json, train_files, val_files, cfg.log_dir)
 
     # Split for GPU's
     partition_train = partition_dataset(data=train_files,
@@ -403,3 +420,12 @@ def build_train_and_val_datasets(cfg):
     else:
         dataset_train, dataset_val = build_decathlon_cv_datasets(cfg, train_transform, val_transform)
     return dataset_train, dataset_val
+
+def build_eval_dataset(cfg):
+    eval_transform = build_validation_transforms(cfg)
+    data_json = os.path.join(cfg.data_path, cfg.task, cfg.json_list)
+    data_files = load_decathlon_datalist(data_json, True, 'validation')
+    print(data_files)
+    eval_ds = Dataset(data=data_files, transform=eval_transform)
+
+    return eval_ds

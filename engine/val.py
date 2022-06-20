@@ -1,10 +1,10 @@
 import math
 import sys
 
+import numpy as np
 import torch
 from monai.data import decollate_batch
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
-from monai.metrics.utils import do_metric_reduction
 from monai.transforms import AsDiscrete
 from torch import autograd
 
@@ -24,7 +24,7 @@ def run_validation(inferer,
         name = 'class' + str(c) + 'Dice'
         metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Validation for epoch: [{}]'.format(epoch)
-    print_freq = 5
+    print_freq = 1
 
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
@@ -61,18 +61,21 @@ def run_validation(inferer,
         dice_scores, dice_not_nans = dice_metric.aggregate()
         hdorf_dist, hdorf_not_nans = haus_dist_metric.aggregate()
 
-        mDice, _ = do_metric_reduction(dice_scores, reduction='mean')
+        class_means = torch.zeros(cfg.output_dim)
+        for c in range(cfg.output_dim):
+            if dice_not_nans[:,c].sum() > 0:
+                class_dice = dice_scores[:,c].nanmean()
+            else:
+                class_dice = np.nan
+            class_means[c] = class_dice
+            keyword_args = {'class' + str(c) + 'Dice': class_dice}
+            metric_logger.update(**keyword_args)
+
+        mDice = class_means.nanmean()
 
         metric_logger.update(loss=loss_value)
         metric_logger.update(mHdorffDist=hdorf_dist.item())
         metric_logger.update(mDice=mDice.item())
-        for c in range(cfg.output_dim):
-            if dice_not_nans[0][c] > 0:
-                class_dice = dice_scores[0][c].item()
-            else:
-                class_dice = None
-            keyword_args = {'class' + str(c) + 'Dice': class_dice}
-            metric_logger.update(**keyword_args)
 
         dice_metric.reset()
         haus_dist_metric.reset()

@@ -16,10 +16,8 @@ from monai.networks.blocks.dynunet_block import UnetOutBlock
 from monai.networks.blocks.unetr_block import UnetrBasicBlock, UnetrUpBlock
 from monai.utils import ensure_tuple_rep
 
-from models.backbones.vit_mae import Block
 
-
-class SwinUNETR(nn.Module):
+class SwinUNETRCustom(nn.Module):
     """
     Swin-UNETR based on: "Yucheng et al.,
     Self-Supervised Pre-Training of Swin Transformers
@@ -37,6 +35,7 @@ for 3D Medical Image Analysis"
         norm_name: Union[Tuple, str] = "instance",
         dropout_rate: float = 0.0,
         spatial_dims: int = 3,
+        input_downsampled: bool = False
     ) -> None:
         """
         Args:
@@ -64,11 +63,11 @@ for 3D Medical Image Analysis"
         img_size = ensure_tuple_rep(img_size, spatial_dims)
         self.img_size = img_size
         self.patch_size = ensure_tuple_rep(patch_size, spatial_dims)
-        self.feat_size = tuple(img_d // p_d for img_d, p_d in zip(img_size, self.patch_size))
         self.hidden_size = hidden_size
         self.classification = False
         self.swin = encoder
-        self.fl_out_size =  (self.img_size[0]//(2**5), self.img_size[1]//(2**5), self.img_size[2]//(2**5))
+        self.fl_out_size = tuple(img_d // (p_d*(2**4)) for img_d, p_d in zip(self.img_size, self.patch_size))
+        self.input_downsampled = input_downsampled
 
         self.encoder0 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
@@ -115,7 +114,6 @@ for 3D Medical Image Analysis"
             norm_name=norm_name,
             res_block=True,
         )
-        '''
         self.encoder5 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
             in_channels=hidden_size * 16,
@@ -125,7 +123,6 @@ for 3D Medical Image Analysis"
             norm_name=norm_name,
             res_block=True,
         )
-        '''
         self.decoder0 = UnetrUpBlock(
             spatial_dims=spatial_dims,
             in_channels=hidden_size,
@@ -171,14 +168,29 @@ for 3D Medical Image Analysis"
             norm_name=norm_name,
             res_block=True,
         )
-        #self.bottleneck = Bottleneck(hidden_size * 16, hidden_size * 16)
-        #self.bottleneck = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size * 16, out_channels=hidden_size * 16)
-        #self.bottleneck = nn.Linear(3**3*hidden_size*16, 3**3*hidden_size*16)
-        self.bottleneck = Block(dim=hidden_size * 16, num_heads=8, qkv_bias=True)
 
         self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size, out_channels=out_channels)
-        self.proj_axes = (0, spatial_dims + 1) + tuple(d + 1 for d in range(spatial_dims))
-        self.proj_view_shape = list(self.feat_size) + [self.hidden_size]
+
+        if self.input_downsampled:
+            self.encoder0 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=in_channels,
+                out_channels=hidden_size // 16,
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
+            self.decoder0 = UnetrUpBlock(
+                spatial_dims=spatial_dims,
+                in_channels=hidden_size,
+                out_channels=hidden_size // 16,
+                kernel_size=3,
+                upsample_kernel_size=8,
+                norm_name=norm_name,
+                res_block=True,
+            )
+            self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=hidden_size // 16, out_channels=out_channels)
 
     def proj_feat(self, x):
         new_view = [x.size(0)] + self.proj_view_shape
@@ -189,12 +201,8 @@ for 3D Medical Image Analysis"
     def forward(self, x_in):
         z = self.swin(x_in)
         x0, x1, x3, x5, x7 = z
-        x7 = x7.flatten(2).transpose(1, 2)
-        x7 = self.bottleneck(x7)
-        x7 = x7.transpose(1, 2).view(-1, self.hidden_size*16,
-                                     self.fl_out_size[0], self.fl_out_size[1], self.fl_out_size[2])
 
-        dec4 = self.decoder4(x7, self.encoder4(x5))
+        dec4 = self.decoder4(self.encoder5(x7), self.encoder4(x5))
         dec3 = self.decoder3(dec4, self.encoder3(x3))
         dec2 = self.decoder2(dec3, self.encoder2(x1))
         dec1 = self.decoder1(dec2, self.encoder1(x0))

@@ -99,6 +99,10 @@ def add_model_config_args(parser):
                        help='Create the patch vector as the mean of the voxel vectors')
     group.set_defaults(lcv_patch_voxel_mean=False)
 
+    group.add_argument('--downsample_volume', action='store_true',
+                       help='When downsampling is active, the transforms crop the volume to a larger size and that volume is then downsampled to vol_size in a larger patch embedding')
+    group.set_defaults(downsample_volume=False)
+
     return parser
 
 
@@ -124,9 +128,15 @@ def add_transform_config_args(parser):
     group.add_argument('--t_ct_max', default=1000, type=int,
                        help='The maximum CT intensity value to clip to')
 
-    group.add_argument('--t_crop_foreground', action='store_true',
-                       help='Crop volumes of space that consists of background only')
-    group.set_defaults(t_crop_foreground=False)
+    group.add_argument('--t_crop_foreground_img', action='store_true',
+                       help='Crop volumes of space that consists of air')
+    group.set_defaults(t_crop_foreground_img=False)
+    group.add_argument('--t_crop_foreground_label', action='store_true',
+                       help='Crop volumes of space that consists of background labels')
+    group.set_defaults(t_crop_foreground_label=False)
+    group.add_argument('--t_sample_background', action='store_true',
+                       help='If background voxels should be used as centers during random cropping')
+    group.set_defaults(t_sample_background=False)
     group.add_argument('--t_rand_crop_fgbg', action='store_true',
                        help='Crop subvolumes based on foreground/background')
     group.set_defaults(t_rand_crop_fgbg=False)
@@ -178,6 +188,8 @@ def add_data_config_args(parser):
 
     group.add_argument('--data_path', default='/datasets/', type=str,
                         help='Dataset path')
+    group.add_argument('--json_list', default='dataset.json', type=str,
+                       help='Json file containing the list of dataset files in Decathlon format')
     group.add_argument('--task', default='Task03_Liver', type=str, help='The Decathlon task to finetune on.')
     group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
     group.add_argument('--n_images_per_batch', type=int, default=8, help='Number of unique images per batch to pull patches from. Total Batch size is n_images_per_batch * t_n_samples_per_image.')
@@ -219,6 +231,7 @@ def add_training_config_args(parser):
     group.add_argument('--val_interval', default=20, type=int)
     group.add_argument('--cv_fold', default=0, type=int, help='Current fold for cross validation')
     group.add_argument('--cv_max_folds', default=5, type=int, help='Max folds for cross validation')
+    group.add_argument('--val_infer_overlap', default=0.5, type=float, help='Overlap between each sliding window in validation')
 
 
     # distributed training parameters
@@ -246,6 +259,7 @@ def add_misc_config_args(parser):
     group.add_argument('--no_neptune_logging', action='store_false', dest='neptune_logging',
                        help='If online logging to neptune should be disabled')
     group.set_defaults(neptune_logging=True)
+    group.add_argument('--save_eval_output', action='store_true', help='If evaluated volumes should be saved on disk')
     group.add_argument('--output_dir', type=str, help='path where to save, empty for no saving')
     group.add_argument('--description', type=str, help='The description of the experiment, used for Neptune logging.')
 

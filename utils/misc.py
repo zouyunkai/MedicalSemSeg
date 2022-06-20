@@ -1,6 +1,8 @@
 import builtins
 import datetime
+import json
 import os
+import re
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -90,7 +92,7 @@ class MetricLogger(object):
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            if v is None:
+            if v is None or v is np.nan:
                 continue
             if isinstance(v, torch.Tensor):
                 v = v.item()
@@ -231,13 +233,16 @@ def init_distributed_mode(cfg):
         os.environ['RANK'] = str(cfg.rank)
         os.environ['WORLD_SIZE'] = str(cfg.world_size)
         # ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "LOCAL_RANK"]
+        print("Using OpenMPI distributed settings")
     elif 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         cfg.rank = int(os.environ["RANK"])
         cfg.world_size = int(os.environ['WORLD_SIZE'])
         cfg.gpu = int(os.environ['LOCAL_RANK'])
+        print("Using distributed settings from environment variables")
     elif 'SLURM_PROCID' in os.environ:
         cfg.rank = int(os.environ['SLURM_PROCID'])
         cfg.gpu = cfg.rank % torch.cuda.device_count()
+        print("Using slurm distributed settings")
     else:
         print('Not using distributed mode')
         setup_for_distributed(is_master=True)  # hack
@@ -367,3 +372,37 @@ class no_op(object):
 
     def __exit__(self, *args):
         pass
+
+def save_decathlon_datalist(org_json_path, train_files, val_files, log_dir):
+    jsonf = open(org_json_path)
+    json_data = json.load(jsonf)
+
+    train_files_fixed = []
+    val_files_fixed = []
+
+    for tf in train_files:
+        train_files_fixed.append(clean_strings(tf))
+
+    for vf in val_files:
+        val_files_fixed.append(clean_strings(vf))
+
+    json_data['training'] = train_files_fixed
+    json_data['validation'] = val_files_fixed
+    json_data['numTraining'] = len(train_files_fixed)
+    json_data['numValidation'] = len(val_files_fixed)
+
+    with open(os.path.join(log_dir, 'dataset_split.json'), 'w') as fp:
+        json.dump(json_data, fp, indent=4)
+
+
+
+def clean_strings(dict_obj):
+    clean_string_img = re.sub(r'^.*?imagesTr', './imagesTr', dict_obj['image'])
+    clean_string_img = re.sub(r'\\', '/', clean_string_img)
+
+    clean_string_label = re.sub(r'^.*?labelsTr', './labelsTr', dict_obj['label'])
+    clean_string_label = re.sub(r'\\', '/', clean_string_label)
+
+    clean_data = {'image': clean_string_img, 'label': clean_string_label}
+
+    return clean_data
