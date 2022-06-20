@@ -11,7 +11,7 @@ import timm.optim.optim_factory as optim_factory
 import torch
 from monai.data import ThreadDataLoader
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceCELoss
+from monai.losses import DiceCELoss, DiceFocalLoss, TverskyLoss
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
 
@@ -95,7 +95,15 @@ def main(cfg):
     misc.load_model(cfg=cfg, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler,
                     scheduler=scheduler)
 
-    criterion = DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, )
+    if cfg.loss_fn == 'DiceCE':
+        criterion = DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True)
+    elif cfg.loss_fn == 'Tversky':
+        criterion = TverskyLoss(to_onehot_y=True, softmax=True)
+    elif cfg.loss_fn == 'DiceFocal':
+        criterion = DiceFocalLoss(to_onehot_y=True, softmax=True, squared_pred=True)
+    else:
+        raise RuntimeError('Could not parse loss function argument.')
+
 
     if cfg.t_normalize:
         air_cval = (0.0 - cfg.t_norm_mean)/cfg.t_norm_std

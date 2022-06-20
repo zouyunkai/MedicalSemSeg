@@ -99,7 +99,6 @@ def add_model_config_args(parser):
                        help='Create the patch vector as the mean of the voxel vectors')
     group.set_defaults(lcv_patch_voxel_mean=False)
 
-
     return parser
 
 
@@ -173,6 +172,7 @@ def add_transform_config_args(parser):
 
     return parser
 
+
 def add_data_config_args(parser):
     group = parser.add_argument_group('data', 'Settings for data, both reading from disk and loading into model')
 
@@ -192,9 +192,12 @@ def add_data_config_args(parser):
 
     return parser
 
+
 def add_optimizer_config_args(parser):
     group = parser.add_argument_group('optimizer', 'Optimzer settings')
 
+    group.add_argument('--loss_fn', type=str, default='DiceCE',
+                       help='The name of the loss function to use. Available options: DiceCE, DiceFocal and Tversky')
     group.add_argument('--weight_decay', type=float, default=1e-5,
                         help='weight decay (default: 0.05)')
     group.add_argument('--lr', type=float, default=4e-4, metavar='LR',
@@ -204,6 +207,7 @@ def add_optimizer_config_args(parser):
     group.add_argument('--warmup_epochs', type=int, default=40, metavar='N',
                         help='epochs to warmup LR')
     return parser
+
 
 def add_training_config_args(parser):
     group = parser.add_argument_group('training', 'Training settings')
@@ -229,6 +233,7 @@ def add_training_config_args(parser):
     group.add_argument('--pretrained', type=str, help='Pretrained checkpoint for backbone')
 
     return parser
+
 
 def add_misc_config_args(parser):
     group = parser.add_argument_group('misc', 'Misc settings')
