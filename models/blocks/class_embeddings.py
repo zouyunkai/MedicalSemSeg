@@ -15,8 +15,8 @@ HU_INTENSITY_INTERVALS_LC = np.array([
                             0,     # Water/Fluids
                             15,    # Cerebrospinal Fluid
                             30,    # Muscle/Kidney
-                            50,    # Liver / Blood
-                            80,    # Acute (Clotted) Blood
+                            60,    # Cancer
+                            100,    # Liver
                             450,   # Trabecular Bone
                             1000   # Cortical Bone
                             ])

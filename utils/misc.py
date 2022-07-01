@@ -328,6 +328,10 @@ def tag_builder(cfg):
         tags.append('3D')
     else:
         tags.append('2D')
+    if cfg.task[0:4] == 'Task':
+        tags.append('Decathlon')
+    elif cfg.task == 'Abdomen' or cfg.task == 'Cervix':
+        tags.append('BTCV')
     tags.append(cfg.task)
     return tags
 

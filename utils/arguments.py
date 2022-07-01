@@ -190,7 +190,7 @@ def add_data_config_args(parser):
                         help='Dataset path')
     group.add_argument('--json_list', default='dataset.json', type=str,
                        help='Json file containing the list of dataset files in Decathlon format')
-    group.add_argument('--task', default='Task03_Liver', type=str, help='The Decathlon task to finetune on.')
+    group.add_argument('--task', default='Task03_Liver', type=str, help='The segmentation task to finetune on.')
     group.add_argument('--batch_size_val', type=int, default=1, help='Batch size for validation data loader')
     group.add_argument('--n_images_per_batch', type=int, default=8, help='Number of unique images per batch to pull patches from. Total Batch size is n_images_per_batch * t_n_samples_per_image.')
     group.add_argument('--n_workers_train', type=int, default=8, help='Number of workers used in Train DataLoader')
