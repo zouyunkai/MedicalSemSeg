@@ -13,7 +13,7 @@ from monai.data import (
 from scipy import ndimage
 
 from data.transforms import ScaleCubedIntensityRanged
-from utils.misc import get_world_size, is_main_process, get_rank, save_decathlon_datalist
+from utils.misc import get_world_size, is_main_process, get_rank, save_decathlon_datalist, check_json_for_key
 
 
 def build_training_transforms(cfg):
@@ -327,19 +327,23 @@ def build_val_dataset(data_path, transform, dstype='validation'):
     return dataset
 
 def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
-    data_json = os.path.join(cfg.data_path, cfg.task, 'dataset.json')
-    data_files = load_decathlon_datalist(data_json, True, 'training')
-    if is_main_process():
-        print("Number of files in total training dataset: {}".format(len(data_files)))
+    data_json = os.path.join(cfg.data_path, cfg.task, cfg.json_list)
+    if check_json_for_key(data_json, 'validation'):
+        train_files = load_decathlon_datalist(data_json, True, 'training')
+        val_files = load_decathlon_datalist(data_json, True, 'validation')
+    else:
+        data_files = load_decathlon_datalist(data_json, True, 'training')
+        if is_main_process():
+            print("Number of files in total training dataset: {}".format(len(data_files)))
 
-    # Split for Cross Validation
-    random.Random(cfg.seed).shuffle(data_files)
-    cv_splits = np.array_split(data_files, cfg.cv_max_folds)
-    train_folds = list(range(cfg.cv_max_folds))
-    train_folds.pop(cfg.cv_fold)
-    train_files = [cv_splits[i] for i in train_folds]
-    train_files = [file for files in train_files for file in files]
-    val_files = cv_splits[cfg.cv_fold]
+        # Split for Cross Validation
+        random.Random(cfg.seed).shuffle(data_files)
+        cv_splits = np.array_split(data_files, cfg.cv_max_folds)
+        train_folds = list(range(cfg.cv_max_folds))
+        train_folds.pop(cfg.cv_fold)
+        train_files = [cv_splits[i] for i in train_folds]
+        train_files = [file for files in train_files for file in files]
+        val_files = cv_splits[cfg.cv_fold]
     if is_main_process():
         print("Number of files in training cv split: {}".format(len(train_files)))
         print("Number of files in val cv split: {}".format(len(val_files)))

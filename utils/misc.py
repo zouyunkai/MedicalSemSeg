@@ -410,3 +410,8 @@ def clean_strings(dict_obj):
     clean_data = {'image': clean_string_img, 'label': clean_string_label}
 
     return clean_data
+
+def check_json_for_key(json_file, key):
+    with open(json_file, 'r') as jf:
+        data = json.load(jf)
+    return key in data.keys()
