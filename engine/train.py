@@ -1,5 +1,6 @@
 import math
 import sys
+import time
 
 import numpy as np
 import torch
@@ -38,13 +39,17 @@ def train_one_epoch(
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.logdir))
 
+    tid_data_start = time.time()
     for data_iter_step, batch in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+
         autograd.set_detect_anomaly(cfg.anomaly_detection)
 
         inputs, labels = (batch["image"], batch["label"])
         inputs = inputs.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
+        tid_forward_start = time.time()
+        tid_data = tid_forward_start - tid_data_start
         with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
             outputs = model(inputs)
             loss = criterion(outputs, labels)
@@ -55,10 +60,17 @@ def train_one_epoch(
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
+        tid_backward_start = time.time()
+        tid_forward = tid_backward_start - tid_forward_start
+
         # Backwards step using loss scaler.
         # If scaler is disabled this acts as a simple backwards pass on loss as loss_scaler.scale(loss)
         # simply returns the loss in that scenario
         loss_scaler.scale(loss).backward()
+
+
+        tid_step_start = time.time()
+        tid_backward = tid_step_start - tid_backward_start
 
         if cfg.gradient_clipping is not None:
             # Unscale here is recorded by the scaler and thus is not performed again in the upcoming step
@@ -73,6 +85,9 @@ def train_one_epoch(
         optimizer.zero_grad()
 
         torch.cuda.synchronize()
+
+        tid_metric_start = time.time()
+        tid_step = tid_metric_start - tid_step_start
 
         labels_list = decollate_batch(labels)
         labels_convert = [post_label(label_tensor) for label_tensor in labels_list]
@@ -113,6 +128,9 @@ def train_one_epoch(
             epoch_1000x = int((data_iter_step / iters + epoch) * 1000)
             log_writer.add_scalar('train_loss', loss_value_reduce, epoch_1000x)
             log_writer.add_scalar('lr', lr, epoch_1000x)
+        tid_data_start = time.time()
+        tid_metric = tid_data_start - tid_metric_start
+        print("Timers for one batch: Data: {:.5f} Forward: {:.5f} Backward: {:.5f} Step: {:.5f} Metric: {:.5f}".format(tid_data, tid_forward, tid_backward, tid_step, tid_metric))
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
