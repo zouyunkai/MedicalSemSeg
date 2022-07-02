@@ -2,6 +2,7 @@ import math
 import sys
 import time
 
+import numpy as np
 import torch
 from monai.data import decollate_batch
 from monai.metrics import DiceMetric
@@ -29,7 +30,7 @@ def train_one_epoch(
 
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
-    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=True)
+    dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=True)
     #haus_dist_metric = HausdorffDistanceMetric(include_background=True, percentile=95, reduction="mean", get_not_nans=True)
 
     iters = len(data_loader)
