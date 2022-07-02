@@ -17,12 +17,12 @@ def run_validation(inferer,
     model.eval()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    metric_logger.add_meter('loss', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
     for c in range(cfg.output_dim):
         name = 'class' + str(c) + 'Dice'
-        metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+        metric_logger.add_meter(name, misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
     header = 'Validation for epoch: [{}]'.format(epoch)
     print_freq = 1
 

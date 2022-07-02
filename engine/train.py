@@ -2,7 +2,6 @@ import math
 import sys
 import time
 
-import numpy as np
 import torch
 from monai.data import decollate_batch
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
@@ -18,19 +17,21 @@ def train_one_epoch(
             loss_scaler, cfg, log_writer=None):
     model.train()
     metric_logger = misc.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    metric_logger.add_meter('loss', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    metric_logger.add_meter('lr', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    metric_logger.add_meter('loss', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    '''
     for c in range(cfg.output_dim):
         name = 'class' + str(c) + 'Dice'
-        metric_logger.add_meter(name, misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+        metric_logger.add_meter(name, misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
+    '''
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
-    dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=True)
+    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=True)
     haus_dist_metric = HausdorffDistanceMetric(include_background=True, percentile=95, reduction="mean", get_not_nans=True)
 
     iters = len(data_loader)
@@ -98,6 +99,7 @@ def train_one_epoch(
         dice_scores, dice_not_nans = dice_metric.aggregate()
         hdorf_dist, hdorf_not_nans = haus_dist_metric.aggregate()
 
+        '''
         class_means = torch.zeros(cfg.output_dim)
         for c in range(cfg.output_dim):
             if dice_not_nans[:,c].sum() > 0:
@@ -107,12 +109,12 @@ def train_one_epoch(
             class_means[c] = class_dice
             keyword_args = {'class' + str(c) + 'Dice': class_dice}
             metric_logger.update(**keyword_args)
-
+        
         mDice = class_means.nanmean()
-
+        '''
         metric_logger.update(loss=loss_value)
         metric_logger.update(mHdorffDist=hdorf_dist.item())
-        metric_logger.update(mDice=mDice.item())
+        metric_logger.update(mDice=dice_scores.item())
 
         dice_metric.reset()
         haus_dist_metric.reset()
