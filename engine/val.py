@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import torch
 from monai.data import decollate_batch
-from monai.metrics import DiceMetric, HausdorffDistanceMetric
+from monai.metrics import DiceMetric
 from monai.transforms import AsDiscrete
 from torch import autograd
 
@@ -18,7 +18,6 @@ def run_validation(inferer,
 
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('loss', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
-    metric_logger.add_meter('mHdorffDist', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
     metric_logger.add_meter('mDice', misc.SmoothedValue(window_size=100, fmt='{value:.6f}'))
     for c in range(cfg.output_dim):
         name = 'class' + str(c) + 'Dice'
@@ -29,7 +28,6 @@ def run_validation(inferer,
     post_label = AsDiscrete(to_onehot=cfg.output_dim)
     post_pred = AsDiscrete(argmax=True, to_onehot=cfg.output_dim)
     dice_metric = DiceMetric(include_background=True, reduction="none", get_not_nans=True)
-    haus_dist_metric = HausdorffDistanceMetric(include_background=True, percentile=95, reduction="mean", get_not_nans=True)
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.logdir))
@@ -57,9 +55,7 @@ def run_validation(inferer,
         outputs_list = decollate_batch(outputs)
         output_convert = [post_pred(pred_tensor) for pred_tensor in outputs_list]
         dice_metric(y_pred=output_convert, y=labels_convert)
-        haus_dist_metric(y_pred=output_convert, y=labels_convert)
         dice_scores, dice_not_nans = dice_metric.aggregate()
-        hdorf_dist, hdorf_not_nans = haus_dist_metric.aggregate()
 
         class_means = torch.zeros(cfg.output_dim)
         for c in range(cfg.output_dim):
@@ -74,11 +70,9 @@ def run_validation(inferer,
         mDice = class_means.nanmean()
 
         metric_logger.update(loss=loss_value)
-        metric_logger.update(mHdorffDist=hdorf_dist.item())
         metric_logger.update(mDice=mDice.item())
 
         dice_metric.reset()
-        haus_dist_metric.reset()
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
         if log_writer is not None:
