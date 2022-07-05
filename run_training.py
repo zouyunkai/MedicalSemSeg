@@ -10,7 +10,6 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 from monai.data import ThreadDataLoader
-from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss, DiceFocalLoss, TverskyLoss
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
@@ -107,20 +106,6 @@ def main(cfg):
     else:
         raise RuntimeError('Could not parse loss function argument.')
 
-
-    if cfg.t_normalize:
-        air_cval = (0.0 - cfg.t_norm_mean)/cfg.t_norm_std
-    else:
-        air_cval = 0.0
-
-    inferer = SlidingWindowInferer(
-        roi_size=cfg.vol_size,
-        sw_batch_size=cfg.batch_size_val,
-        overlap=cfg.val_infer_overlap,
-        mode='gaussian',
-        cval=air_cval
-    )
-
     # Run training
     start_time = time.time()
     #dataset_train.start()
@@ -141,8 +126,7 @@ def main(cfg):
             torch.cuda.empty_cache()
             if args.distributed:
                 torch.distributed.barrier()
-            val_stats = run_validation(inferer,
-                model, data_loader_val, criterion, device, epoch,
+            val_stats = run_validation(model, data_loader_val, criterion, device, epoch,
                 log_writer=log_writer, cfg=cfg)
             log_stats_val = {**{f'{k}': v for k, v in val_stats.items()},
                      'epoch': epoch, }
