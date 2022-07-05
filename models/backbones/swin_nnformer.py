@@ -82,8 +82,8 @@ class WindowAttention(nn.Module):
 
         self.rel_pos_bias_affine = rel_pos_bias_affine
         if self.rel_pos_bias_affine:
-            self.rel_pos_bias_affine_emb = nn.Linear(3, 3**3 * self.window_size[0] * self.window_size[1] * self.window_size[
-                2] * num_heads)
+            self.rel_pos_bias_affine_emb = nn.Linear(3, self.window_size[0] ** 2 * self.window_size[1] ** 2 * self.window_size[
+                2] ** 2 * num_heads)
             trunc_normal_(self.rel_pos_bias_affine_emb.weight, std=.02)
 
 
