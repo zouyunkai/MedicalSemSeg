@@ -39,9 +39,20 @@ def run_validation(inferer,
         inputs = inputs.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
+        org_affine = batch['image_meta_dict']['original_affine']
+        aff_xyz = misc.get_affine_xyz(org_affine)
+        aff_xyz = aff_xyz.to(device, non_blocking=True)
+
+        for t in batch['image_transforms']:
+            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd':
+                batch_relative_crop_loc = misc.get_rel_crop_loc(t)
+                batch_relative_crop_loc = batch_relative_crop_loc.to(device, non_blocking=True)
+
+        model_in = (inputs, batch_relative_crop_loc, aff_xyz)
+
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
-                outputs = inferer(inputs=inputs, network=model)
+                outputs = inferer(inputs=model_in, network=model)
                 loss = criterion(outputs, labels)
 
         loss_value = loss.item()

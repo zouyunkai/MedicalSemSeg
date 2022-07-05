@@ -53,10 +53,20 @@ def window_reverse(windows, window_size, S, H, W):
     x = x.permute(0, 1, 4, 2, 5, 3, 6, 7).contiguous().view(B, S, H, W, -1)
     return x
 
+def window_affine(aff, n_windows):
+    B, A = aff.shape
+    l = list()
+    for i in range(B):
+        l.append(aff[i].repeat(n_windows, 1))
+    affw = torch.concat(l, dim=0)
+    return affw
+
+
 
 class WindowAttention(nn.Module):
 
-    def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.):
+    def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
+                 rel_pos_bias_affine=None):
 
         super().__init__()
         self.dim = dim
@@ -69,6 +79,14 @@ class WindowAttention(nn.Module):
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1) * (2 * window_size[2] - 1),
                         num_heads))
+
+        self.rel_pos_bias_affine = rel_pos_bias_affine
+        if self.rel_pos_bias_affine:
+            self.rel_pos_bias_affine_emb = nn.Linear(3, 3**3 * self.window_size[0] * self.window_size[1] * self.window_size[
+                2] * num_heads)
+            trunc_normal_(self.rel_pos_bias_affine_emb.weight, std=.02)
+
+
 
         # get pair-wise relative position index for each token inside the window
         coords_s = torch.arange(self.window_size[0])
@@ -96,7 +114,7 @@ class WindowAttention(nn.Module):
 
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x, mask=None, pos_embed=None):
+    def forward(self, x, mask=None, pos_embed=None, affine=None):
 
         B_, N, C = x.shape
 
@@ -112,6 +130,17 @@ class WindowAttention(nn.Module):
             self.window_size[0] * self.window_size[1] * self.window_size[2], -1)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
         attn = attn + relative_position_bias.unsqueeze(0)
+
+        if self.rel_pos_bias_affine and affine is not None:
+            n_windows = B_ // affine.shape[0]
+            aff_windows = window_affine(affine, n_windows)
+            rel_pos_bias_aff = self.rel_pos_bias_affine_emb(aff_windows)
+            rel_pos_bias_aff = rel_pos_bias_aff.view(B_,
+                                                     self.window_size[0] * self.window_size[1] * self.window_size[2],
+                                                     self.window_size[0] * self.window_size[1] * self.window_size[2],
+                                                     self.num_heads)
+            rel_pos_bias_aff = rel_pos_bias_aff.permute(0, 3, 1, 2).contiguous()
+            attn = attn + rel_pos_bias_aff
 
         if mask is not None:
             nW = mask.shape[0]
@@ -135,7 +164,7 @@ class SwinTransformerBlock(nn.Module):
 
     def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm):
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, rel_pos_bias_affine=None):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -155,14 +184,15 @@ class SwinTransformerBlock(nn.Module):
 
         self.attn = WindowAttention(
             dim, window_size=to_3tuple(self.window_size), num_heads=num_heads,
-            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop,
+            rel_pos_bias_affine=rel_pos_bias_affine)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
-    def forward(self, x, mask_matrix):
+    def forward(self, x, mask_matrix, affine=None):
 
         B, L, C = x.shape
         S, H, W = self.input_resolution
@@ -195,7 +225,7 @@ class SwinTransformerBlock(nn.Module):
                                    C)
 
         # W-MSA/SW-MSA
-        attn_windows = self.attn(x_windows, mask=attn_mask, pos_embed=None)
+        attn_windows = self.attn(x_windows, mask=attn_mask, pos_embed=None, affine=affine)
 
         # merge windows
         attn_windows = attn_windows.view(-1, self.window_size, self.window_size, self.window_size, C)
@@ -257,7 +287,8 @@ class BasicLayer(nn.Module):
                  attn_drop=0.,
                  drop_path=0.,
                  norm_layer=nn.LayerNorm,
-                 downsample=True
+                 downsample=True,
+                 rel_pos_bias_affine=None
                  ):
         super().__init__()
         self.window_size = window_size
@@ -277,7 +308,9 @@ class BasicLayer(nn.Module):
                 qk_scale=qk_scale,
                 drop=drop,
                 attn_drop=attn_drop,
-                drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path, norm_layer=norm_layer)
+                drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                norm_layer=norm_layer,
+                rel_pos_bias_affine=rel_pos_bias_affine)
             for i in range(depth)])
 
         # patch merging layer
@@ -286,7 +319,7 @@ class BasicLayer(nn.Module):
         else:
             self.downsample = None
 
-    def forward(self, x, S, H, W):
+    def forward(self, x, S, H, W, affine=None):
 
         # calculate attention mask for SW-MSA
         Sp = int(np.ceil(S / self.window_size)) * self.window_size
@@ -315,7 +348,7 @@ class BasicLayer(nn.Module):
         attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
         attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
         for blk in self.blocks:
-            x = blk(x, attn_mask)
+            x = blk(x, attn_mask, affine=affine)
         if self.downsample is not None:
             x_down = self.downsample(x, S, H, W)
             Ws, Wh, Ww = (S + 1) // 2, (H + 1) // 2, (W + 1) // 2
@@ -421,7 +454,9 @@ class SwinTransformerNNFormer(nn.Module):
                  lcv_concat_vector=False,
                  lcv_only=False,
                  lcv_linear_comb=False,
-                 lcv_patch_voxel_mean=False
+                 lcv_patch_voxel_mean=False,
+                 rel_crop_pos_emb=False,
+                 rel_pos_bias_affine=False
                  ):
         super().__init__()
 
@@ -467,6 +502,12 @@ class SwinTransformerNNFormer(nn.Module):
             '''
         self.pos_drop = nn.Dropout(p=drop_rate)
 
+        if rel_crop_pos_emb:
+            self.rel_crop_pos_emb = nn.Linear(3, embed_dim)
+            trunc_normal_(self.rel_crop_pos_emb.weight, std=.02)
+        else:
+            self.rel_crop_pos_emb = None
+
         # stochastic depth
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
 
@@ -490,7 +531,8 @@ class SwinTransformerNNFormer(nn.Module):
                 drop_path=dpr[sum(
                     depths[:i_layer]):sum(depths[:i_layer + 1])],
                 norm_layer=norm_layer,
-                downsample=PatchMerging #if (i_layer < self.num_layers - 1) else None
+                downsample=PatchMerging, #if (i_layer < self.num_layers - 1) else None
+                rel_pos_bias_affine=rel_pos_bias_affine
             )
             self.layers.append(layer)
 
@@ -506,20 +548,26 @@ class SwinTransformerNNFormer(nn.Module):
     def forward(self, input):
         """Forward function."""
 
+        vol, crop_loc, aff = input
+
         output = []
 
         if self.use_learned_cls_vectors:
-            x_cls = self.lcv(input)
+            x_cls = self.lcv(vol)
             if self.lcv_only:
                 x = x_cls
             else:
-                x = self.patch_embed(input)
+                x = self.patch_embed(vol)
                 if self.lcv_concat_vector:
                     x = torch.cat([x, x_cls], dim=1)
                 else:
                     x = x + x_cls
         else:
-            x = self.patch_embed(input)
+            x = self.patch_embed(vol)
+
+        if not self.rel_crop_pos_emb is None:
+            rcpe = self.rel_crop_pos_emb(crop_loc).unsqueeze(1).unsqueeze(1).unsqueeze(1)
+            x = x + rcpe
 
         output.append(x)
 
@@ -530,12 +578,11 @@ class SwinTransformerNNFormer(nn.Module):
 
         for i in range(self.num_layers):
             layer = self.layers[i]
-            x_out, S, H, W, x, Ws, Wh, Ww = layer(x, Ws, Wh, Ww)
+            x_out, S, H, W, x, Ws, Wh, Ww = layer(x, Ws, Wh, Ww, affine=aff)
             if i in self.out_indices:
                 norm_layer = getattr(self, f'norm{i}')
                 x_out = norm_layer(x)
 
                 out = x_out.view(-1, Ws, Wh, Ww, self.num_features[i]).permute(0, 4, 1, 2, 3).contiguous()
-
                 output.append(out)
         return output

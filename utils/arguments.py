@@ -52,9 +52,17 @@ def add_model_config_args(parser):
                         help='Use relative position bias in the encoder')
     group.set_defaults(rel_pos_bias=False)
 
+    group.add_argument('--rel_pos_bias_affine', action='store_true',
+                       help='Use relative position bias with affine in the encoder')
+    group.set_defaults(rel_pos_bias_affine=False)
+
     group.add_argument('--abs_pos_emb', action='store_true',
                         help='Use absolute position emb in the encoder')
     group.set_defaults(abs_pos_bias=False)
+
+    group.add_argument('--rel_crop_pos_emb', action='store_true',
+                       help='Use a embedding that takes into account the relative position of the cropped volume')
+    group.set_defaults(rel_crop_pos_emb=False)
 
     group.add_argument('--qkv_bias', action='store_true',
                         help='Use bias for attention qkv in the encoder')

@@ -132,7 +132,9 @@ def build_model(cfg):
             lcv_concat_vector=cfg.lcv_concat_vector,
             lcv_only=cfg.lcv_only,
             lcv_linear_comb=cfg.lcv_linear_comb,
-            lcv_patch_voxel_mean=cfg.lcv_patch_voxel_mean
+            lcv_patch_voxel_mean=cfg.lcv_patch_voxel_mean,
+            rel_pos_bias_affine=cfg.rel_pos_bias_affine,
+            rel_crop_pos_emb=cfg.rel_crop_pos_emb
         )
         if cfg.learned_cls_vectors:
             print("LCV Intensity intervals: {}".format(encoder.lcv.intensity_intervals))

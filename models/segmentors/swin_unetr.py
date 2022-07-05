@@ -206,5 +206,5 @@ for 3D Medical Image Analysis"
         dec3 = self.decoder3(dec4, self.encoder3(x3))
         dec2 = self.decoder2(dec3, self.encoder2(x1))
         dec1 = self.decoder1(dec2, self.encoder1(x0))
-        dec0 = self.decoder0(dec1, self.encoder0(x_in))
+        dec0 = self.decoder0(dec1, self.encoder0(x_in[0]))
         return self.out(dec0)

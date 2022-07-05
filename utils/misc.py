@@ -8,6 +8,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 
 import numpy as np
+import scipy.ndimage as ndimage
 import torch
 import torch.distributed as dist
 
@@ -399,7 +400,6 @@ def save_decathlon_datalist(org_json_path, train_files, val_files, log_dir):
         json.dump(json_data, fp, indent=4)
 
 
-
 def clean_strings(dict_obj):
     clean_string_img = re.sub(r'^.*?imagesTr', './imagesTr', dict_obj['image'])
     clean_string_img = re.sub(r'\\', '/', clean_string_img)
@@ -411,7 +411,32 @@ def clean_strings(dict_obj):
 
     return clean_data
 
+
 def check_json_for_key(json_file, key):
     with open(json_file, 'r') as jf:
         data = json.load(jf)
     return key in data.keys()
+
+
+def resample_3d(img, target_size):
+    imx, imy, imz = img.shape
+    tx, ty, tz = target_size
+    zoom_ratio = ( float(tx) / float(imx), float(ty) / float(imy), float(tz) / float(imz))
+    img_resampled = ndimage.zoom( img, zoom_ratio, order=0, prefilter=False)
+    return img_resampled
+
+def get_affine_xyz(full_affine):
+    x = full_affine[:, 0, 0]
+    y = full_affine[:, 1, 1]
+    z = full_affine[:, 2, 2]
+    affine_xyz = torch.stack([x,y,z], dim=1)
+    return affine_xyz
+
+def get_rel_crop_loc(rand_crop_transform_dict):
+    os = rand_crop_transform_dict['orig_size']
+    c = rand_crop_transform_dict['extra_info']['center']
+    rel_x = c[0] / os[0]
+    rel_y = c[1] / os[1]
+    rel_z = c[2] / os[2]
+    rel_crop_loc = torch.stack([rel_x, rel_y, rel_z], dim=1)
+    return rel_crop_loc
