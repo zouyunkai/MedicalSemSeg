@@ -231,12 +231,15 @@ def sliding_window_inference(
             [slice(int(idx / num_win), int(idx / num_win) + 1), slice(None)] + list(slices[idx % num_win])
             for idx in slice_range
         ]
-        centers = torch.cat([torch.tensor([ws[2].stop - roi_size[0] // 2, ws[3].stop - roi_size[1] // 2, ws[4].stop - roi_size[2] // 2], device=device) for ws in unravel_slice]).to(sw_device)
+        centers = torch.stack([torch.tensor([(ws[2].stop - roi_size[0] // 2) / image_size[0],
+                                             (ws[3].stop - roi_size[1] // 2) / image_size[1],
+                                             (ws[4].stop - roi_size[2] // 2) / image_size[2]],
+                                            device=device) for ws in unravel_slice]).to(sw_device)
+        centers = centers.float()
         if sw_batch_size == 1:
             centers = centers.unsqueeze(0)
-        relative_centers = centers / torch.tensor([image_size], device=device)
         window_data = torch.cat([inputs[win_slice] for win_slice in unravel_slice]).to(sw_device)
-        model_in = (window_data, relative_centers, affine)
+        model_in = (window_data, centers, affine)
         seg_prob = predictor(model_in, *args, **kwargs).to(device)  # batched patch segmentation
 
         if not _initialized:  # init. buffer at the first iteration

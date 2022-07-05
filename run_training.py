@@ -16,7 +16,6 @@ from torch.distributed.elastic.multiprocessing.errors import record
 
 import utils.misc as misc
 from data.dataset_builder import build_train_and_val_datasets
-from engine.train import train_one_epoch
 from engine.val import run_validation
 from models.model_builder import build_model
 from models.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
@@ -114,15 +113,15 @@ def main(cfg):
             #data_loader_train.sampler.set_epoch(epoch)
             #data_loader_val.sampler.set_epoch(epoch)
             torch.distributed.barrier()
-
+        '''
         train_stats = train_one_epoch(
             model, data_loader_train,
             optimizer, criterion, device, epoch,
             loss_scaler, cfg, log_writer=log_writer)
         log_stats = {**{f'{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }
-
-        if not((epoch + 1) % cfg.val_interval):
+        '''
+        if not((epoch) % cfg.val_interval):
             torch.cuda.empty_cache()
             if args.distributed:
                 torch.distributed.barrier()
