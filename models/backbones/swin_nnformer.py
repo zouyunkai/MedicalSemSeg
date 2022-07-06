@@ -6,7 +6,7 @@ from timm.models.layers import DropPath, to_3tuple, trunc_normal_
 from torch import nn
 
 from models.blocks.class_embeddings import LearnedClassVectors
-from models.blocks.patch_embeddings import PatchEmbedDeep
+from models.blocks.patch_embeddings import PatchEmbed3D
 
 
 class ContiguousGrad(torch.autograd.Function):
@@ -489,18 +489,18 @@ class SwinTransformerNNFormer(nn.Module):
                                             linear_comb=lcv_linear_comb,
                                             patch_voxel_mean=lcv_patch_voxel_mean)
         if not self.lcv_only:
-            '''
+
             self.patch_embed = PatchEmbed3D(
                 vol_size=pretrain_img_size,
                 patch_size=patch_size,
                 in_chans=in_chans,
                 embed_dim=pe_dim,
                 norm_layer=norm_layer if self.patch_norm else None)
-            
+            '''
             self.patch_embed = PatchEmbed(
                 patch_size=patch_size, in_chans=in_chans, embed_dim=pe_dim,
                 norm_layer=norm_layer if self.patch_norm else None)
-            '''
+            
             self.patch_embed = PatchEmbedDeep(
                 vol_size=pretrain_img_size,
                 patch_size=patch_size,
@@ -508,6 +508,7 @@ class SwinTransformerNNFormer(nn.Module):
                 embed_dim=pe_dim,
                 norm_layer=norm_layer if self.patch_norm else None
             )
+            '''
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         if rel_crop_pos_emb:
