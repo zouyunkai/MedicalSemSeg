@@ -128,7 +128,7 @@ for 3D Medical Image Analysis"
             in_channels=hidden_size,
             out_channels=hidden_size,
             kernel_size=3,
-            upsample_kernel_size=2,
+            upsample_kernel_size=self.patch_size,
             norm_name=norm_name,
             res_block=True,
         )
