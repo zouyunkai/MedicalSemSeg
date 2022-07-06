@@ -146,7 +146,7 @@ class PatchEmbedDeep(nn.Module):
         self.block1 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
             in_channels=in_chans,
-            out_channels=embed_dim,
+            out_channels=embed_dim // 4,
             kernel_size=3,
             stride=1,
             norm_name=norm_name,
@@ -154,15 +154,15 @@ class PatchEmbedDeep(nn.Module):
         )
         self.block2 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
-            in_channels=in_chans,
-            out_channels=embed_dim,
+            in_channels=embed_dim // 4,
+            out_channels=embed_dim // 2,
             kernel_size=3,
             stride=1,
             norm_name=norm_name,
             res_block=True,
         )
 
-        self.proj = nn.Conv3d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
+        self.proj = nn.Conv3d(embed_dim // 2, embed_dim, kernel_size=patch_size, stride=patch_size)
 
         if norm_layer is not None:
             self.norm = norm_layer(embed_dim)
