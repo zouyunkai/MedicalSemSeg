@@ -91,3 +91,44 @@ def eval_model(inferer, model, data_loader, criterion, device, cfg, log_writer=N
     print("Evaluation averaged stats:", metric_logger.log_all_average())
     eval_dict = {'eval/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}
     return eval_dict
+
+def test_model(inferer, model, data_loader, device, cfg, log_writer=None):
+    model.eval()
+
+    metric_logger = misc.MetricLogger(delimiter="  ")
+    header = 'Testing starting'
+    print_freq = 1
+
+    if log_writer is not None:
+        print('log_dir: {}'.format(log_writer.logdir))
+
+    autograd.set_detect_anomaly(cfg.anomaly_detection)
+    for data_iter_step, batch in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        torch.cuda.empty_cache()
+
+        inputs = batch["image"]
+        inputs = inputs.to(device, non_blocking=True)
+        original_affine = batch['image_meta_dict']['affine'][0].numpy()
+        img_name = os.path.split(batch['image_meta_dict']['filename_or_obj'][0])[-1]
+
+        with torch.no_grad():
+            with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
+                outputs = inferer(inputs=inputs, network=model)
+
+        for t in batch['image_transforms']:
+            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd':
+               target_size =  t['orig_size']
+
+
+        test_outputs = torch.softmax(outputs, 1).cpu().numpy()
+        test_outputs = np.argmax(test_outputs, axis=1).astype(np.uint8)[0]
+        test_outputs = misc.resample_3d(test_outputs, target_size)
+
+        if cfg.save_eval_output:
+            out_dir = os.path.join(cfg.output_dir, 'test_output')
+            os.makedirs(out_dir, exist_ok=True)
+            # Save pred
+            nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), original_affine),
+                     os.path.join(cfg.output_dir, 'pred_' + img_name))
+
+    return

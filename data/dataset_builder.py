@@ -198,7 +198,8 @@ def build_training_transforms(cfg):
         monai.transforms.ToTensord(keys=["image", "label"])
     )
     if is_main_process():
-        print("Training transforms: {}".format(transforms))
+        for i, t in enumerate(transforms):
+            print("Training transform {}: {}".format(i, t))
     return monai.transforms.Compose(transforms)
 
 
@@ -271,7 +272,69 @@ def build_validation_transforms(cfg):
         monai.transforms.ToTensord(keys=["image", "label"])
     )
     if is_main_process():
-        print("Validation transforms: {}".format(transforms))
+        for i, t in enumerate(transforms):
+            print("Validation transform {}: {}".format(i, t))
+    return monai.transforms.Compose(transforms)
+
+def build_test_transforms(cfg):
+    transforms = [
+        monai.transforms.LoadImaged(keys=["image"]),
+        monai.transforms.AddChanneld(keys=["image"]),
+        monai.transforms.Orientationd(keys=["image"], axcodes="RAS")
+    ]
+    if cfg.t_voxel_spacings:
+        transforms.append(
+            monai.transforms.Spacingd(
+                keys=["image"],
+                pixdim=cfg.t_voxel_dims,
+                mode="bilinear",
+            ))
+    if cfg.t_cubed_ct_intensity:
+        transforms.append(
+            ScaleCubedIntensityRanged(
+                keys=["image"],
+                a_min=cfg.t_ct_min,
+                a_max=cfg.t_ct_max,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+        ))
+    elif cfg.t_fixed_ct_intensity:
+        transforms.append(
+            monai.transforms.ScaleIntensityRanged(
+                keys=["image"],
+                a_min=cfg.t_ct_min,
+                a_max=cfg.t_ct_max,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+        ))
+    else:
+        transforms.append(
+            monai.transforms.ScaleIntensityRangePercentilesD(
+                keys=['image'],
+                lower=5,
+                upper=95,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+                relative=False
+            )
+        )
+    if cfg.t_normalize:
+        transforms.append(
+            monai.transforms.NormalizeIntensityd(
+                keys=['image'],
+                subtrahend=cfg.t_norm_mean,
+                divisor = cfg.t_norm_std
+            )
+        )
+    transforms.append(
+        monai.transforms.ToTensord(keys=["image"])
+    )
+    if is_main_process():
+        for i, t in enumerate(transforms):
+            print("Test transform {}: {}".format(i, t))
     return monai.transforms.Compose(transforms)
 
 
@@ -433,3 +496,12 @@ def build_eval_dataset(cfg):
     eval_ds = Dataset(data=data_files, transform=eval_transform)
 
     return eval_ds
+
+def build_test_dataset(cfg):
+    test_transform = build_test_transforms(cfg)
+    data_json = os.path.join(cfg.data_path, cfg.task, cfg.json_list)
+    data_files = load_decathlon_datalist(data_json, True, 'test')
+    print(data_files)
+    test_ds = Dataset(data=data_files, transform=test_transform)
+
+    return test_ds
