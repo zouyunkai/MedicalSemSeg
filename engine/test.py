@@ -122,7 +122,7 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
         aff_xyz = aff_xyz.to(device, non_blocking=True)
 
         for t in batch['image_transforms']:
-            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd':
+            if t['class'][0] == 'Spacingd':
                target_size =  t['orig_size']
 
         with torch.no_grad():
