@@ -280,7 +280,7 @@ def build_test_transforms(cfg):
     transforms = [
         monai.transforms.LoadImaged(keys=["image"]),
         monai.transforms.AddChanneld(keys=["image"]),
-        monai.transforms.Orientationd(keys=["image"], axcodes="RAS")
+        #monai.transforms.Orientationd(keys=["image"], axcodes="RAS")
     ]
     if cfg.t_voxel_spacings:
         transforms.append(
