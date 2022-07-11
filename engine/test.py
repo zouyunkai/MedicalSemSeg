@@ -115,6 +115,7 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
         inputs = batch["image"]
         inputs = inputs.to(device, non_blocking=True)
         original_affine = batch['image_meta_dict']['original_affine']
+        affine = batch['image_meta_dict']['affine']
         img_name = os.path.split(batch['image_meta_dict']['filename_or_obj'][0])[-1]
 
         aff_xyz = misc.get_affine_xyz(original_affine)
@@ -147,7 +148,7 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
             out_dir = os.path.join(cfg.output_dir, 'test_output')
             os.makedirs(out_dir, exist_ok=True)
             # Save pred
-            nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), original_affine[0].numpy()),
+            nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), affine[0].numpy()),
                      os.path.join(out_dir, 'pred_' + img_name))
 
     return
