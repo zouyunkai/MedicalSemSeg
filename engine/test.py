@@ -148,6 +148,6 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
             os.makedirs(out_dir, exist_ok=True)
             # Save pred
             nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), original_affine[0].numpy()),
-                     os.path.join(cfg.output_dir, 'pred_' + img_name))
+                     os.path.join(out_dir, 'pred_' + img_name))
 
     return
