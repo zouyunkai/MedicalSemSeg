@@ -9,6 +9,7 @@ from monai.transforms import AsDiscrete
 from torch import autograd
 
 import utils.misc as misc
+from engine.utils import sliding_window_inference
 
 
 def eval_model(inferer, model, data_loader, criterion, device, cfg, log_writer=None):
@@ -92,12 +93,17 @@ def eval_model(inferer, model, data_loader, criterion, device, cfg, log_writer=N
     eval_dict = {'eval/' + k: meter.global_avg for k, meter in metric_logger.meters.items()}
     return eval_dict
 
-def test_model(inferer, model, data_loader, device, cfg, log_writer=None):
+def test_model(model, data_loader, device, cfg, log_writer=None):
     model.eval()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
     header = 'Testing starting'
     print_freq = 1
+
+    if cfg.t_normalize:
+        air_cval = (0.0 - cfg.t_norm_mean)/cfg.t_norm_std
+    else:
+        air_cval = 0.0
 
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.logdir))
@@ -108,17 +114,30 @@ def test_model(inferer, model, data_loader, device, cfg, log_writer=None):
 
         inputs = batch["image"]
         inputs = inputs.to(device, non_blocking=True)
-        original_affine = batch['image_meta_dict']['affine'][0].numpy()
+        original_affine = batch['image_meta_dict']['original_affine']
         img_name = os.path.split(batch['image_meta_dict']['filename_or_obj'][0])[-1]
 
-        with torch.no_grad():
-            with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
-                outputs = inferer(inputs=inputs, network=model)
+        aff_xyz = misc.get_affine_xyz(original_affine)
+        aff_xyz = aff_xyz.float()
+        aff_xyz = aff_xyz.to(device, non_blocking=True)
 
         for t in batch['image_transforms']:
             if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd':
                target_size =  t['orig_size']
 
+        with torch.no_grad():
+            with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
+                outputs = sliding_window_inference(inputs=inputs,
+                                                   affine=aff_xyz,
+                                                   predictor=model,
+                                                   roi_size=cfg.vol_size,
+                                                   sw_batch_size=cfg.batch_size_val,
+                                                   overlap=cfg.val_infer_overlap,
+                                                   mode='gaussian',
+                                                   device=device,
+                                                   sw_device=device,
+                                                   cval=air_cval
+                                                   )
 
         test_outputs = torch.softmax(outputs, 1).cpu().numpy()
         test_outputs = np.argmax(test_outputs, axis=1).astype(np.uint8)[0]
@@ -128,7 +147,7 @@ def test_model(inferer, model, data_loader, device, cfg, log_writer=None):
             out_dir = os.path.join(cfg.output_dir, 'test_output')
             os.makedirs(out_dir, exist_ok=True)
             # Save pred
-            nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), original_affine),
+            nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), original_affine[0].numpy()),
                      os.path.join(cfg.output_dir, 'pred_' + img_name))
 
     return

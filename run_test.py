@@ -5,7 +5,6 @@ from pathlib import Path
 
 import torch
 from monai.data import ThreadDataLoader
-from monai.inferers import SlidingWindowInferer
 from tensorboardX import SummaryWriter
 from torch.distributed.elastic.multiprocessing.errors import record
 
@@ -48,23 +47,10 @@ def main(cfg):
     model_state_dict = torch.load(cfg.resume)['model']
     model.load_state_dict(model_state_dict)
 
-    if cfg.t_normalize:
-        air_cval = (0.0 - cfg.t_norm_mean)/cfg.t_norm_std
-    else:
-        air_cval = 0.0
-
-    inferer = SlidingWindowInferer(
-        roi_size=cfg.vol_size,
-        sw_batch_size=cfg.batch_size_val,
-        overlap=cfg.val_infer_overlap,
-        mode='gaussian',
-        cval=air_cval
-    )
-
     # Run evaluation
     start_time = time.time()
 
-    test_model(inferer, model, data_loader_eval, device, cfg, log_writer=log_writer)
+    test_model(model, data_loader_eval, device, cfg, log_writer=log_writer)
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Testing time {}'.format(total_time_str))
