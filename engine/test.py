@@ -117,6 +117,7 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
         original_affine = batch['image_meta_dict']['original_affine']
         affine = batch['image_meta_dict']['affine']
         img_name = os.path.split(batch['image_meta_dict']['filename_or_obj'][0])[-1]
+        img_name = img_name.split('img')[-1]
 
         aff_xyz = misc.get_affine_xyz(original_affine)
         aff_xyz = aff_xyz.float()
@@ -144,12 +145,24 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
         test_outputs_rs = misc.resample_3d(test_outputs, target_size)
 
         if cfg.save_eval_output:
-            out_dir = os.path.join(cfg.output_dir, 'test_output')
+            out_dir = os.path.join(cfg.output_dir, 'test_output', 'Fold' + str(cfg.cv_fold))
             os.makedirs(out_dir, exist_ok=True)
-            nib.save(nib.Nifti1Image(test_outputs_rs.astype(np.uint8), original_affine[0].numpy()),
-                     os.path.join(out_dir, 'pred_resampled_' + img_name))
+
+            affine[0,0:3,3] = 0
+            original_affine[0, 0:3, 3] = 0
+            '''
+            write_nifti(test_outputs.astype(np.uint8), os.path.join(out_dir, 'pred' + img_name),
+                        affine=affine[0], mode='nearest')
+            write_nifti(test_outputs.astype(np.uint8), os.path.join(out_dir, 'label' + img_name),
+                        affine=affine[0], target_affine=original_affine[0], output_spatial_shape=target_size,
+                        mode='nearest')
+
+            '''
+            nifti_output_rs = nib.Nifti1Image(test_outputs_rs.astype(np.uint8), original_affine[0].numpy())
+            nib.save(nifti_output_rs, os.path.join(out_dir, 'label' + img_name))
             nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), affine[0].numpy()),
-                     os.path.join(out_dir, 'pred_' + img_name))
+                     os.path.join(out_dir, 'pred' + img_name))
             nib.save(nib.Nifti1Image(inputs.squeeze().cpu().numpy(), affine[0].numpy()),
-                     os.path.join(out_dir, 'input_' + img_name))
+                     os.path.join(out_dir, 'img' + img_name))
+
     return

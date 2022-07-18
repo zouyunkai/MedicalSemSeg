@@ -1,6 +1,7 @@
 import monai
 from monai.networks.nets import UNETR
 
+from models.backbones.gc_vit_3d import GCViT
 from models.backbones.swin_3d import SwinTransformer3D
 from models.backbones.swin_nnformer import SwinTransformerNNFormer
 from models.backbones.vit_mae import ViTMAE
@@ -157,6 +158,26 @@ def build_model(cfg):
             deep_supervision=False,
             window_size=cfg.window_size,
             patch_size=cfg.patch_size
+        )
+    elif cfg.model == 'GCViTUNETR':
+        encoder = GCViT(
+            resolution=cfg.vol_size,
+            in_chans=cfg.in_chans,
+            dim=cfg.hidden_dim,
+            mlp_ratio=3.,
+            depths=[2, 2, 2, 2],
+            num_heads=[3, 6, 12, 24],
+            window_size=cfg.window_size,
+            qkv_bias=cfg.qkv_bias,
+        )
+        model = SwinUNETRCustom(
+            encoder,
+            in_channels=cfg.in_chans,
+            out_channels=cfg.output_dim,
+            img_size=cfg.vol_size,
+            hidden_size=cfg.hidden_dim,
+            patch_size=cfg.patch_size,
+            input_downsampled=cfg.downsample_volume
         )
     return model
 
