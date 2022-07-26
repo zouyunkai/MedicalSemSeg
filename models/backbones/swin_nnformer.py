@@ -131,6 +131,7 @@ class WindowAttention(nn.Module):
         if self.global_block_token:
             gbt = self.gbt.repeat(B_, 1, 1)
             x = torch.cat((x, gbt), dim=1)
+            N += 1
 
         qkv = self.qkv(x)
 
