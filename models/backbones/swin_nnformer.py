@@ -4,6 +4,7 @@ import torch.nn.functional
 import torch.nn.functional as F
 from timm.models.layers import DropPath, to_3tuple, trunc_normal_
 from torch import nn
+from math import ceil
 
 from models.blocks.class_embeddings import LearnedClassVectors
 from models.blocks.patch_embeddings import PatchEmbed3D
@@ -198,8 +199,8 @@ class SwinTransformerBlock(nn.Module):
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
 
-        n_windows = (self.input_resolution[0] // self.window_size) * (self.input_resolution[1] // self.window_size) * \
-                    (self.input_resolution[2] // self.window_size)
+        n_windows = ceil(self.input_resolution[0] / self.window_size) * ceil(self.input_resolution[1] / self.window_size) * \
+                    ceil(self.input_resolution[2] / self.window_size)
 
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
@@ -243,9 +244,7 @@ class SwinTransformerBlock(nn.Module):
             attn_mask = None
 
         # partition windows
-        print(shifted_x.shape)
         x_windows = window_partition(shifted_x, self.window_size)  # nW*B, window_size, window_size, C
-        print(x_windows.shape)
         x_windows = x_windows.view(-1, self.window_size * self.window_size * self.window_size,
                                    C)
 
