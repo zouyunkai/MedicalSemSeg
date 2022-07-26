@@ -133,7 +133,6 @@ class WindowAttention(nn.Module):
             gbt = self.gbt.repeat(B_, 1, 1)
             x = torch.cat((x, gbt), dim=1)
             N += 1
-            n_attn_tokens += 1
 
         qkv = self.qkv(x)
 
@@ -146,7 +145,11 @@ class WindowAttention(nn.Module):
             n_attn_tokens,
             n_attn_tokens, -1)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
-        attn = attn + relative_position_bias.unsqueeze(0)
+        if self.global_block_token:
+           attn[:, :, 0:n_attn_tokens, 0:n_attn_tokens] = attn[:, :, 0:n_attn_tokens, 0:n_attn_tokens] + \
+                                                          relative_position_bias.unsqueeze(0)
+        else:
+            attn = attn + relative_position_bias.unsqueeze(0)
 
         if self.rel_pos_bias_affine and affine is not None:
             n_windows = B_ // affine.shape[0]
