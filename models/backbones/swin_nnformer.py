@@ -243,7 +243,9 @@ class SwinTransformerBlock(nn.Module):
             attn_mask = None
 
         # partition windows
+        print(shifted_x.shape)
         x_windows = window_partition(shifted_x, self.window_size)  # nW*B, window_size, window_size, C
+        print(x_windows.shape)
         x_windows = x_windows.view(-1, self.window_size * self.window_size * self.window_size,
                                    C)
 
