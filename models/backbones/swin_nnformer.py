@@ -127,11 +127,13 @@ class WindowAttention(nn.Module):
     def forward(self, x, mask=None, pos_embed=None, affine=None):
 
         B_, N, C = x.shape
+        n_attn_tokens = self.window_size[0] * self.window_size[1] * self.window_size[2]
 
         if self.global_block_token:
             gbt = self.gbt.repeat(B_, 1, 1)
             x = torch.cat((x, gbt), dim=1)
             N += 1
+            n_attn_tokens += 1
 
         qkv = self.qkv(x)
 
@@ -141,8 +143,8 @@ class WindowAttention(nn.Module):
         q = q * self.scale
         attn = (q @ k.transpose(-2, -1).contiguous())
         relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
-            self.window_size[0] * self.window_size[1] * self.window_size[2],
-            self.window_size[0] * self.window_size[1] * self.window_size[2], -1)
+            n_attn_tokens,
+            n_attn_tokens, -1)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
         attn = attn + relative_position_bias.unsqueeze(0)
 
@@ -151,8 +153,8 @@ class WindowAttention(nn.Module):
             aff_windows = window_affine(affine, n_windows)
             rel_pos_bias_aff = self.rel_pos_bias_affine_emb(aff_windows)
             rel_pos_bias_aff = rel_pos_bias_aff.view(B_,
-                                                     self.window_size[0] * self.window_size[1] * self.window_size[2],
-                                                     self.window_size[0] * self.window_size[1] * self.window_size[2],
+                                                     n_attn_tokens,
+                                                     n_attn_tokens,
                                                      self.num_heads)
             rel_pos_bias_aff = rel_pos_bias_aff.permute(0, 3, 1, 2).contiguous()
             attn = attn + rel_pos_bias_aff
