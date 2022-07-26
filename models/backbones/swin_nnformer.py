@@ -198,7 +198,8 @@ class SwinTransformerBlock(nn.Module):
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
 
-        n_windows = sum([ip //self.window_size for ip in self.input_resolution])
+        n_windows = (self.input_resolution[0] // self.window_size) * (self.input_resolution[1] // self.window_size) * \
+                    (self.input_resolution[2] // self.window_size)
 
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
