@@ -62,11 +62,10 @@ def window_affine(aff, n_windows):
     return affw
 
 
-
 class WindowAttention(nn.Module):
 
     def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
-                 rel_pos_bias_affine=None, global_block_token=False):
+                 rel_pos_bias_affine=None, global_block_token=False, n_windows=n_windows):
 
         super().__init__()
         self.dim = dim
@@ -75,16 +74,11 @@ class WindowAttention(nn.Module):
         head_dim = dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
         self.global_block_token = global_block_token
+        self.n_windows = n_windows
+        self.n_attn_tokens = self.window_size[0] * self.window_size[1] * self.window_size[2]
 
         if self.global_block_token:
-            self.gbt = nn.Parameter(torch.zeros(1, 1, self.dim))
-            trunc_normal_(self.gbt, std=.02)
-            '''
-            gbt = []
-            for h in self.num_heads:
-                gbt.append(trunc_normal_(nn.Parameter(torch.zeros(1, 1, self.dim // self.num_heads), std=.02)))
-            self.gbt = nn.ParameterList(gbt)
-            '''
+            self.gbt = nn.Linear(self.n_windows * self.dim * self.n_attn_tokens, self.dim)
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1) * (2 * window_size[2] - 1),
@@ -124,13 +118,17 @@ class WindowAttention(nn.Module):
 
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x, mask=None, pos_embed=None, affine=None):
+    def forward(self, x, mask=None, pos_embed=None, affine=None, batch_size=None):
 
         B_, N, C = x.shape
         n_attn_tokens = self.window_size[0] * self.window_size[1] * self.window_size[2]
 
         if self.global_block_token:
-            gbt = self.gbt.repeat(B_, 1, 1)
+            x_gbt = x.reshape(B_ // self.n_windows, self.n_windows, N, C)
+            x_gbt = x_gbt.flatten(1) # (B_ // n_windows, self.n_windows *  N * C)
+            gbt = self.gbt(x_gbt) # (B_ // n_windows, C)
+            gbt = gbt.unsqueeze(1).unsqueeze(1) # (B_ // n_windows, 1, 1, C)
+            gbt = torch.cat(tuple([gbt[i].repeat(self.n_windows, 1, 1) for i in range(B_ // self.n_windows)]), dim=0) # (B_, 1, C)
             x = torch.cat((x, gbt), dim=1)
             N += 1
 
@@ -177,6 +175,8 @@ class WindowAttention(nn.Module):
             x = x + pos_embed
         x = self.proj(x)
         x = self.proj_drop(x)
+        if self.global_block_token:
+            x = x[:,0:N-1,:]
         return x
 
 
@@ -198,6 +198,8 @@ class SwinTransformerBlock(nn.Module):
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
 
+        n_windows = sum([ip*self.window_size for ip in self.input_resolution])
+
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
         self.norm1 = norm_layer(dim)
@@ -205,7 +207,7 @@ class SwinTransformerBlock(nn.Module):
         self.attn = WindowAttention(
             dim, window_size=to_3tuple(self.window_size), num_heads=num_heads,
             qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop,
-            rel_pos_bias_affine=rel_pos_bias_affine, global_block_token=global_block_token)
+            rel_pos_bias_affine=rel_pos_bias_affine, global_block_token=global_block_token, n_windows=n_windows)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
