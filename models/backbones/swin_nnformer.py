@@ -65,7 +65,7 @@ def window_affine(aff, n_windows):
 class WindowAttention(nn.Module):
 
     def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
-                 rel_pos_bias_affine=None, global_block_token=False, n_windows=n_windows):
+                 rel_pos_bias_affine=None, global_block_token=False, n_windows=0):
 
         super().__init__()
         self.dim = dim
