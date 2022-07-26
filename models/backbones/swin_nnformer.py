@@ -66,7 +66,7 @@ def window_affine(aff, n_windows):
 class WindowAttention(nn.Module):
 
     def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
-                 rel_pos_bias_affine=None):
+                 rel_pos_bias_affine=None, global_block_token=False):
 
         super().__init__()
         self.dim = dim
@@ -74,7 +74,17 @@ class WindowAttention(nn.Module):
         self.num_heads = num_heads
         head_dim = dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
+        self.global_block_token = global_block_token
 
+        if self.global_block_token:
+            self.gbt = nn.Parameter(torch.zeros(1, 1, self.dim))
+            trunc_normal_(self.gbt, std=.02)
+            '''
+            gbt = []
+            for h in self.num_heads:
+                gbt.append(trunc_normal_(nn.Parameter(torch.zeros(1, 1, self.dim // self.num_heads), std=.02)))
+            self.gbt = nn.ParameterList(gbt)
+            '''
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1) * (2 * window_size[2] - 1),
@@ -118,9 +128,13 @@ class WindowAttention(nn.Module):
 
         B_, N, C = x.shape
 
+        if self.global_block_token:
+            gbt = self.gbt.repeat(B_, 1, 1)
+            x = torch.cat((x, gbt), dim=1)
+
         qkv = self.qkv(x)
 
-        qkv = qkv.reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
+        qkv = qkv.reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous() # (3, B_, num_heads, N, C // num_heads)
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
 
         q = q * self.scale
@@ -164,7 +178,7 @@ class SwinTransformerBlock(nn.Module):
 
     def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, rel_pos_bias_affine=None):
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, rel_pos_bias_affine=None, global_block_token=False):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -185,7 +199,7 @@ class SwinTransformerBlock(nn.Module):
         self.attn = WindowAttention(
             dim, window_size=to_3tuple(self.window_size), num_heads=num_heads,
             qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop,
-            rel_pos_bias_affine=rel_pos_bias_affine)
+            rel_pos_bias_affine=rel_pos_bias_affine, global_block_token=global_block_token)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -288,7 +302,8 @@ class BasicLayer(nn.Module):
                  drop_path=0.,
                  norm_layer=nn.LayerNorm,
                  downsample=True,
-                 rel_pos_bias_affine=None
+                 rel_pos_bias_affine=None,
+                 global_block_token=False,
                  ):
         super().__init__()
         self.window_size = window_size
@@ -310,7 +325,8 @@ class BasicLayer(nn.Module):
                 attn_drop=attn_drop,
                 drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                 norm_layer=norm_layer,
-                rel_pos_bias_affine=rel_pos_bias_affine)
+                rel_pos_bias_affine=rel_pos_bias_affine,
+                global_block_token=global_block_token)
             for i in range(depth)])
 
         # patch merging layer
@@ -456,7 +472,8 @@ class SwinTransformerNNFormer(nn.Module):
                  lcv_linear_comb=False,
                  lcv_patch_voxel_mean=False,
                  rel_crop_pos_emb=False,
-                 rel_pos_bias_affine=False
+                 rel_pos_bias_affine=False,
+                 global_block_token=False,
                  ):
         super().__init__()
 
@@ -541,7 +558,8 @@ class SwinTransformerNNFormer(nn.Module):
                     depths[:i_layer]):sum(depths[:i_layer + 1])],
                 norm_layer=norm_layer,
                 downsample=PatchMerging, #if (i_layer < self.num_layers - 1) else None
-                rel_pos_bias_affine=rel_pos_bias_affine
+                rel_pos_bias_affine=rel_pos_bias_affine,
+                global_block_token=global_block_token
             )
             self.layers.append(layer)
 

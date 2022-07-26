@@ -135,7 +135,8 @@ def build_model(cfg):
             lcv_linear_comb=cfg.lcv_linear_comb,
             lcv_patch_voxel_mean=cfg.lcv_patch_voxel_mean,
             rel_pos_bias_affine=cfg.rel_pos_bias_affine,
-            rel_crop_pos_emb=cfg.rel_crop_pos_emb
+            rel_crop_pos_emb=cfg.rel_crop_pos_emb,
+            global_block_token=cfg.global_block_token
         )
         if cfg.learned_cls_vectors:
             print("LCV Intensity intervals: {}".format(encoder.lcv.intensity_intervals))

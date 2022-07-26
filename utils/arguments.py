@@ -111,6 +111,10 @@ def add_model_config_args(parser):
                        help='When downsampling is active, the transforms crop the volume to a larger size and that volume is then downsampled to vol_size in a larger patch embedding')
     group.set_defaults(downsample_volume=False)
 
+    group.add_argument('--global_block_token', action='store_true',
+                       help='Use a global token for each block that attends to every token in each window')
+    group.set_defaults(global_block_token=False)
+
     return parser
 
 
