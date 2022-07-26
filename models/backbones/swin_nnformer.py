@@ -79,7 +79,7 @@ class WindowAttention(nn.Module):
         self.n_attn_tokens = self.window_size[0] * self.window_size[1] * self.window_size[2]
 
         if self.global_block_token:
-            self.gbt = nn.Linear(self.n_windows * self.dim * self.n_attn_tokens, self.dim)
+            self.gbt = nn.Linear(self.n_windows * self.n_attn_tokens, 1)
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1) * (2 * window_size[2] - 1),
@@ -126,9 +126,10 @@ class WindowAttention(nn.Module):
 
         if self.global_block_token:
             x_gbt = x.reshape(B_ // self.n_windows, self.n_windows, N, C)
-            x_gbt = x_gbt.flatten(1) # (B_ // n_windows, self.n_windows *  N * C)
-            gbt = self.gbt(x_gbt) # (B_ // n_windows, C)
-            gbt = gbt.unsqueeze(1).unsqueeze(1) # (B_ // n_windows, 1, 1, C)
+            x_gbt = x_gbt.permute(0, 3, 1, 2) # (B_ // n_windows, C, n_windows, N)
+            x_gbt = x_gbt.flatten(2) # (B_ // n_windows, C, n_windows *  N )
+            gbt = self.gbt(x_gbt) # (B_ // n_windows, C, 1)
+            gbt = gbt.permute(0, 2, 1).unsqueeze(1)  # (B_ // n_windows, 1, 1, C)
             gbt = torch.cat(tuple([gbt[i].repeat(self.n_windows, 1, 1) for i in range(B_ // self.n_windows)]), dim=0) # (B_, 1, C)
             x = torch.cat((x, gbt), dim=1)
             N += 1
