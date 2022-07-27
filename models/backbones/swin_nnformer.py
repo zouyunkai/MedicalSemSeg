@@ -192,7 +192,7 @@ class WindowAttention(nn.Module):
             x = x[:,0:N-1,:]
         if global_token is not None:
             x = x[:, 0:N - 1, :]
-            global_token = x[:, N, :]
+            global_token = x[:, N -1, :]
         return x, global_token
 
 
