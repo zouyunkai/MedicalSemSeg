@@ -152,7 +152,7 @@ class WindowAttention(nn.Module):
             n_attn_tokens,
             n_attn_tokens, -1)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
-        if self.global_block_token:
+        if self.global_block_token or global_token is not None:
            attn[:, :, 0:n_attn_tokens, 0:n_attn_tokens] = attn[:, :, 0:n_attn_tokens, 0:n_attn_tokens] + \
                                                           relative_position_bias.unsqueeze(0)
         else:
@@ -171,7 +171,7 @@ class WindowAttention(nn.Module):
 
         if mask is not None:
             nW = mask.shape[0]
-            if self.global_block_token:
+            if self.global_block_token or global_token is not None:
                 attn = attn.view(B_ // nW, nW, self.num_heads, N, N)
                 attn[:, :, :, 0:N-1, 0:N-1] = attn[:, :, :, 0:N-1, 0:N-1] + mask.unsqueeze(1).unsqueeze(0)
             else:
