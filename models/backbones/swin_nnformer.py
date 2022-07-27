@@ -134,7 +134,7 @@ class WindowAttention(nn.Module):
             x = torch.cat((x, gbt), dim=1)
             N += 1
 
-        if global_token:
+        if global_token is not None:
             x = torch.cat((x, gbt), dim=1)
             N += 1
 
