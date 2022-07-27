@@ -135,7 +135,7 @@ class WindowAttention(nn.Module):
             N += 1
 
         if global_token is not None:
-            x = torch.cat((x, gbt), dim=1)
+            x = torch.cat((x, global_token), dim=1)
             N += 1
 
         qkv = self.qkv(x)
