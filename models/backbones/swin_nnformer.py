@@ -496,7 +496,7 @@ class SwinTransformerNNFormer(nn.Module):
                  rel_crop_pos_emb=False,
                  rel_pos_bias_affine=False,
                  global_block_token=False,
-                 global_token=False
+                 global_token=None
                  ):
         super().__init__()
 
@@ -626,7 +626,7 @@ class SwinTransformerNNFormer(nn.Module):
             rcpe = self.rel_crop_pos_emb(crop_loc).unsqueeze(1).unsqueeze(1).unsqueeze(1)
             x = x + rcpe
 
-        if self.global_token:
+        if self.global_token is not None:
             batch_size = x.size(0)
             B_ = batch_size * self.n_windows
             global_token = self.global_token.expand(B_, -1, -1, -1, -1)
