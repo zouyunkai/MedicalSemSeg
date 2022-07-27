@@ -561,9 +561,9 @@ class SwinTransformerNNFormer(nn.Module):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
 
         if global_token:
-            self.n_windows = ceil(self.pretrain_img_size[0] / self.window_size[0]) * ceil(
-                self.pretrain_img_size[1] / self.window_size[0]) * \
-                        ceil(self.pretrain_img_size[2] / self.window_size[0])
+            self.n_windows = ceil(self.pretrain_img_size[0] / window_size[0]) * ceil(
+                self.pretrain_img_size[1] / window_size[0]) * \
+                        ceil(self.pretrain_img_size[2] / window_size[0])
             self.global_token = nn.Parameter(torch.zeros(1, 1, 1, 1, embed_dim))
             trunc_normal_(self.global_token, std=.02)
 
