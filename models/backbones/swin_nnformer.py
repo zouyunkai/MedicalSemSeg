@@ -564,7 +564,7 @@ class SwinTransformerNNFormer(nn.Module):
             self.n_windows = ceil(self.pretrain_img_size[0] / window_size[0]) * ceil(
                 self.pretrain_img_size[1] / window_size[0]) * \
                         ceil(self.pretrain_img_size[2] / window_size[0])
-            self.global_token = nn.Parameter(torch.zeros(1, 1, 1, 1, embed_dim))
+            self.global_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
             trunc_normal_(self.global_token, std=.02)
 
         # build layers
@@ -629,7 +629,7 @@ class SwinTransformerNNFormer(nn.Module):
         if self.global_token is not None:
             batch_size = x.size(0)
             B_ = batch_size * self.n_windows
-            global_token = self.global_token.expand(B_, -1, -1, -1, -1)
+            global_token = self.global_token.expand(B_, -1, -1)
         else:
             global_token = None
 
