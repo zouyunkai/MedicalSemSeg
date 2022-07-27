@@ -190,7 +190,7 @@ class WindowAttention(nn.Module):
         x = self.proj_drop(x)
         if self.global_block_token:
             x = x[:,0:N-1,:]
-        if global_token:
+        if global_token is not None:
             x = x[:, 0:N - 1, :]
             global_token = x[:, N, :]
         return x, global_token
