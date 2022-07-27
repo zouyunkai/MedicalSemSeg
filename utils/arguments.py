@@ -115,6 +115,10 @@ def add_model_config_args(parser):
                        help='Use a global token for each block that attends to every token in each window')
     group.set_defaults(global_block_token=False)
 
+    group.add_argument('--global_token', action='store_true',
+                       help='Use a global token for the entire network that attends to every token in each window')
+    group.set_defaults(global_token=False)
+
     return parser
 
 

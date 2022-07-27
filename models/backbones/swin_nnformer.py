@@ -119,7 +119,7 @@ class WindowAttention(nn.Module):
 
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x, mask=None, pos_embed=None, affine=None, batch_size=None):
+    def forward(self, x, mask=None, pos_embed=None, affine=None, global_token=None):
 
         B_, N, C = x.shape
         n_attn_tokens = self.window_size[0] * self.window_size[1] * self.window_size[2]
@@ -131,6 +131,10 @@ class WindowAttention(nn.Module):
             gbt = self.gbt(x_gbt) # (B_ // n_windows, C, 1)
             gbt = gbt.permute(0, 2, 1).unsqueeze(1)  # (B_ // n_windows, 1, 1, C)
             gbt = torch.cat(tuple([gbt[i].repeat(self.n_windows, 1, 1) for i in range(B_ // self.n_windows)]), dim=0) # (B_, 1, C)
+            x = torch.cat((x, gbt), dim=1)
+            N += 1
+
+        if global_token:
             x = torch.cat((x, gbt), dim=1)
             N += 1
 
@@ -183,7 +187,10 @@ class WindowAttention(nn.Module):
         x = self.proj_drop(x)
         if self.global_block_token:
             x = x[:,0:N-1,:]
-        return x
+        if global_token:
+            x = x[:, 0:N - 1, :]
+            global_token = x[:, N, :]
+        return x, global_token
 
 
 class SwinTransformerBlock(nn.Module):
@@ -221,7 +228,7 @@ class SwinTransformerBlock(nn.Module):
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
-    def forward(self, x, mask_matrix, affine=None):
+    def forward(self, x, mask_matrix, affine=None, global_token=None):
 
         B, L, C = x.shape
         S, H, W = self.input_resolution
@@ -254,7 +261,7 @@ class SwinTransformerBlock(nn.Module):
                                    C)
 
         # W-MSA/SW-MSA
-        attn_windows = self.attn(x_windows, mask=attn_mask, pos_embed=None, affine=affine)
+        attn_windows, global_token = self.attn(x_windows, mask=attn_mask, pos_embed=None, affine=affine, global_token=global_token)
 
         # merge windows
         attn_windows = attn_windows.view(-1, self.window_size, self.window_size, self.window_size, C)
@@ -275,7 +282,7 @@ class SwinTransformerBlock(nn.Module):
         x = shortcut + self.drop_path(x)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
 
-        return x
+        return x, global_token
 
 
 class PatchMerging(nn.Module):
@@ -350,7 +357,7 @@ class BasicLayer(nn.Module):
         else:
             self.downsample = None
 
-    def forward(self, x, S, H, W, affine=None):
+    def forward(self, x, S, H, W, affine=None, global_token=None):
 
         # calculate attention mask for SW-MSA
         Sp = int(np.ceil(S / self.window_size)) * self.window_size
@@ -379,13 +386,13 @@ class BasicLayer(nn.Module):
         attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
         attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
         for blk in self.blocks:
-            x = blk(x, attn_mask, affine=affine)
+            x, global_token = blk(x, attn_mask, affine=affine, global_token=global_token)
         if self.downsample is not None:
             x_down = self.downsample(x, S, H, W)
             Ws, Wh, Ww = (S + 1) // 2, (H + 1) // 2, (W + 1) // 2
-            return x, S, H, W, x_down, Ws, Wh, Ww
+            return x, S, H, W, x_down, Ws, Wh, Ww, global_token
         else:
-            return x, S, H, W, x, S, H, W
+            return x, S, H, W, x, S, H, W, global_token
 
 
 class project(nn.Module):
@@ -489,6 +496,7 @@ class SwinTransformerNNFormer(nn.Module):
                  rel_crop_pos_emb=False,
                  rel_pos_bias_affine=False,
                  global_block_token=False,
+                 global_token=False
                  ):
         super().__init__()
 
@@ -552,6 +560,13 @@ class SwinTransformerNNFormer(nn.Module):
         # stochastic depth
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
 
+        if global_token:
+            self.n_windows = ceil(self.input_resolution[0] / self.window_size) * ceil(
+                self.input_resolution[1] / self.window_size) * \
+                        ceil(self.input_resolution[2] / self.window_size)
+            self.global_token = nn.Parameter(torch.zeros(1, 1, 1, 1, embed_dim))
+            trunc_normal_(self.global_token, std=.02)
+
         # build layers
         self.layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
@@ -611,6 +626,13 @@ class SwinTransformerNNFormer(nn.Module):
             rcpe = self.rel_crop_pos_emb(crop_loc).unsqueeze(1).unsqueeze(1).unsqueeze(1)
             x = x + rcpe
 
+        if self.global_token:
+            batch_size = x.size(0)
+            B_ = batch_size * self.n_windows
+            global_token = self.global_token.expand(B_, -1, -1, -1, -1)
+        else:
+            global_token = None
+
         output.append(x)
 
         Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
@@ -620,7 +642,7 @@ class SwinTransformerNNFormer(nn.Module):
 
         for i in range(self.num_layers):
             layer = self.layers[i]
-            x_out, S, H, W, x, Ws, Wh, Ww = layer(x, Ws, Wh, Ww, affine=aff)
+            x_out, S, H, W, x, Ws, Wh, Ww, global_token = layer(x, Ws, Wh, Ww, affine=aff, global_token=global_token)
             if i in self.out_indices:
                 norm_layer = getattr(self, f'norm{i}')
                 x_out = norm_layer(x)
