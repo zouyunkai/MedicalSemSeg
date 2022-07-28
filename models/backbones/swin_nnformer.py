@@ -1,10 +1,11 @@
+from math import ceil
+
 import numpy as np
 import torch
 import torch.nn.functional
 import torch.nn.functional as F
 from timm.models.layers import DropPath, to_3tuple, trunc_normal_
 from torch import nn
-from math import ceil
 
 from models.blocks.class_embeddings import LearnedClassVectors
 from models.blocks.patch_embeddings import PatchEmbed3D
@@ -66,7 +67,7 @@ def window_affine(aff, n_windows):
 class WindowAttention(nn.Module):
 
     def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
-                 rel_pos_bias_affine=None, global_block_token=False, n_windows=0):
+                 rel_pos_bias_affine=None, global_block_token=False, n_windows=0, global_token=False):
 
         super().__init__()
         self.dim = dim
@@ -77,9 +78,12 @@ class WindowAttention(nn.Module):
         self.global_block_token = global_block_token
         self.n_windows = n_windows
         self.n_attn_tokens = self.window_size[0] * self.window_size[1] * self.window_size[2]
+        self.global_token = global_token
 
         if self.global_block_token:
             self.gbt = nn.Linear(self.n_windows * self.n_attn_tokens, 1)
+        if self.global_token:
+            self.gt_proj = nn.Linear(self.n_windows, 1)
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1) * (2 * window_size[2] - 1),
@@ -134,7 +138,7 @@ class WindowAttention(nn.Module):
             x = torch.cat((x, gbt), dim=1)
             N += 1
 
-        if global_token is not None:
+        if self.global_token:
             batch_size = global_token.size(0)
             gbt = torch.cat(tuple([global_token[i].repeat(self.n_windows, 1, 1) for i in range(batch_size)]),
                             dim=0)  # (B_, 1, C)
@@ -152,7 +156,7 @@ class WindowAttention(nn.Module):
             n_attn_tokens,
             n_attn_tokens, -1)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
-        if self.global_block_token or global_token is not None:
+        if self.global_block_token or self.global_token:
            attn[:, :, 0:n_attn_tokens, 0:n_attn_tokens] = attn[:, :, 0:n_attn_tokens, 0:n_attn_tokens] + \
                                                           relative_position_bias.unsqueeze(0)
         else:
@@ -190,8 +194,12 @@ class WindowAttention(nn.Module):
         x = self.proj_drop(x)
         if self.global_block_token:
             x = x[:,0:N-1,:]
-        if global_token is not None:
+        if self.global_token:
             global_token = x[:, N -1, :]
+            global_token = global_token.view(batch_size, self.n_windows, 1, self.dim)
+            global_token = global_token.permute(0, 2, 3, 1)
+            global_token = self.gt_proj(global_token)
+            global_token = global_token.squeeze(3)
             x = x[:, 0:N - 1, :]
         return x, global_token
 
@@ -200,7 +208,8 @@ class SwinTransformerBlock(nn.Module):
 
     def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, rel_pos_bias_affine=None, global_block_token=False):
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, rel_pos_bias_affine=None, global_block_token=False,
+                 global_token=False):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -224,7 +233,7 @@ class SwinTransformerBlock(nn.Module):
         self.attn = WindowAttention(
             dim, window_size=to_3tuple(self.window_size), num_heads=num_heads,
             qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop,
-            rel_pos_bias_affine=rel_pos_bias_affine, global_block_token=global_block_token, n_windows=n_windows)
+            rel_pos_bias_affine=rel_pos_bias_affine, global_block_token=global_block_token, n_windows=n_windows, global_token=global_token)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -329,6 +338,7 @@ class BasicLayer(nn.Module):
                  downsample=True,
                  rel_pos_bias_affine=None,
                  global_block_token=False,
+                 global_token=False
                  ):
         super().__init__()
         self.window_size = window_size
@@ -351,7 +361,8 @@ class BasicLayer(nn.Module):
                 drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                 norm_layer=norm_layer,
                 rel_pos_bias_affine=rel_pos_bias_affine,
-                global_block_token=global_block_token)
+                global_block_token=global_block_token,
+                global_token=global_token)
             for i in range(depth)])
 
         # patch merging layer
@@ -499,7 +510,7 @@ class SwinTransformerNNFormer(nn.Module):
                  rel_crop_pos_emb=False,
                  rel_pos_bias_affine=False,
                  global_block_token=False,
-                 global_token=None
+                 global_token=False
                  ):
         super().__init__()
 
@@ -589,7 +600,8 @@ class SwinTransformerNNFormer(nn.Module):
                 norm_layer=norm_layer,
                 downsample=PatchMerging, #if (i_layer < self.num_layers - 1) else None
                 rel_pos_bias_affine=rel_pos_bias_affine,
-                global_block_token=global_block_token
+                global_block_token=global_block_token,
+                global_token=global_token
             )
             self.layers.append(layer)
 
