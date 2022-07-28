@@ -142,6 +142,8 @@ class WindowAttention(nn.Module):
             batch_size = global_token.size(0)
             gbt = torch.cat(tuple([global_token[i].repeat(self.n_windows, 1, 1) for i in range(batch_size)]),
                             dim=0)  # (B_, 1, C)
+            print("Global token before cat shape: {}".format(gbt.shape))
+            print("X before cat shape: {}".format(x.shape))
             x = torch.cat((x, gbt), dim=1)
             N += 1
 
@@ -641,6 +643,7 @@ class SwinTransformerNNFormer(nn.Module):
         if self.global_token is not None:
             batch_size = x.size(0)
             global_token = self.global_token.expand(batch_size, -1, -1, -1)
+            print("Global token initial shape: {}".format(global_token.shape))
         else:
             global_token = None
 
