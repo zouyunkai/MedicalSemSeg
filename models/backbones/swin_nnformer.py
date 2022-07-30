@@ -373,6 +373,10 @@ class BasicLayer(nn.Module):
         else:
             self.downsample = None
 
+        self.global_token = global_token
+        if self.global_token:
+            self.gt_upsample = nn.Linear(dim, dim * 2)
+
     def forward(self, x, S, H, W, affine=None, global_token=None):
 
         # calculate attention mask for SW-MSA
@@ -406,6 +410,8 @@ class BasicLayer(nn.Module):
         if self.downsample is not None:
             x_down = self.downsample(x, S, H, W)
             Ws, Wh, Ww = (S + 1) // 2, (H + 1) // 2, (W + 1) // 2
+            if self.global_token:
+                global_token = self.gt_upsample(global_token)
             return x, S, H, W, x_down, Ws, Wh, Ww, global_token
         else:
             return x, S, H, W, x, S, H, W, global_token
@@ -579,6 +585,8 @@ class SwinTransformerNNFormer(nn.Module):
         if global_token:
             self.global_token = nn.Parameter(torch.zeros(1, 1, 1, embed_dim))
             trunc_normal_(self.global_token, std=.02)
+        else:
+            self.global_token = None
 
         # build layers
         self.layers = nn.ModuleList()
