@@ -12,6 +12,8 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+from models.blocks.patch_embeddings import PatchEmbed3D
+
 
 class Mlp(nn.Module):
     """ Multilayer perceptron."""
@@ -58,7 +60,7 @@ class FocalModulation(nn.Module):
         self.use_postln = use_postln
 
         self.f = nn.Linear(dim, 2 * dim + (self.focal_level + 1), bias=True)
-        self.h = nn.Conv2d(dim, dim, kernel_size=1, stride=1, padding=0, groups=1, bias=True)
+        self.h = nn.Conv3d(dim, dim, kernel_size=1, stride=1, padding=0, groups=1, bias=True)
 
         self.act = nn.GELU()
         self.proj = nn.Linear(dim, dim)
@@ -72,7 +74,7 @@ class FocalModulation(nn.Module):
             kernel_size = self.focal_factor * k + self.focal_window
             self.focal_layers.append(
                 nn.Sequential(
-                    nn.Conv2d(dim, dim, kernel_size=kernel_size, stride=1, groups=dim,
+                    nn.Conv3d(dim, dim, kernel_size=kernel_size, stride=1, groups=dim,
                               padding=kernel_size // 2, bias=False),
                     nn.GELU(),
                 )
@@ -84,20 +86,19 @@ class FocalModulation(nn.Module):
         Args:
             x: input features with shape of (B, H, W, C)
         """
-        B, nH, nW, C = x.shape
+        B, nS, nH, nW, C = x.shape
         x = self.f(x)
-        x = x.permute(0, 3, 1, 2).contiguous()
+        x = x.permute(0, 4, 1, 2, 3).contiguous()
         q, ctx, gates = torch.split(x, (C, C, self.focal_level + 1), 1)
-
         ctx_all = 0
         for l in range(self.focal_level):
             ctx = self.focal_layers[l](ctx)
             ctx_all = ctx_all + ctx * gates[:, l:l + 1]
-        ctx_global = self.act(ctx.mean(2, keepdim=True).mean(3, keepdim=True))
+        ctx_global = self.act(ctx.mean(2, keepdim=True).mean(3, keepdim=True).mean(4, keepdim=True))
         ctx_all = ctx_all + ctx_global * gates[:, self.focal_level:]
 
         x_out = q * self.h(ctx_all)
-        x_out = x_out.permute(0, 2, 3, 1).contiguous()
+        x_out = x_out.permute(0, 2, 3, 4, 1).contiguous()
         if self.use_postln:
             x_out = self.ln(x_out)
         x_out = self.proj(x_out)
@@ -156,15 +157,15 @@ class FocalModulationBlock(nn.Module):
             H, W: Spatial resolution of the input feature.
         """
         B, L, C = x.shape
-        H, W = self.H, self.W
-        assert L == H * W, "input feature has wrong size"
+        S, H, W = self.S, self.H, self.W
+        assert L == S * H * W, "input feature has wrong size"
 
         shortcut = x
         x = self.norm1(x)
-        x = x.view(B, H, W, C)
+        x = x.view(B, S, H, W, C)
 
         # FM
-        x = self.modulation(x).view(B, H * W, C)
+        x = self.modulation(x).view(B, S * H * W, C)
 
         # FFN
         x = shortcut + self.drop_path(self.gamma_1 * x)
@@ -226,15 +227,13 @@ class BasicLayer(nn.Module):
             self.downsample = downsample(
                 patch_size=2,
                 in_chans=dim, embed_dim=2 * dim,
-                use_conv_embed=use_conv_embed,
                 norm_layer=norm_layer,
-                is_stem=False
             )
 
         else:
             self.downsample = None
 
-    def forward(self, x, H, W):
+    def forward(self, x, S, H, W):
         """ Forward function.
 
         Args:
@@ -243,19 +242,19 @@ class BasicLayer(nn.Module):
         """
 
         for blk in self.blocks:
-            blk.H, blk.W = H, W
+            blk.S, blk.H, blk.W = S, H, W
             if self.use_checkpoint:
                 x = checkpoint.checkpoint(blk, x)
             else:
                 x = blk(x)
         if self.downsample is not None:
-            x_reshaped = x.transpose(1, 2).view(x.shape[0], x.shape[-1], H, W)
+            x_reshaped = x.transpose(1, 2).view(x.shape[0], x.shape[-1], S, H, W)
             x_down = self.downsample(x_reshaped)
             x_down = x_down.flatten(2).transpose(1, 2)
-            Wh, Ww = (H + 1) // 2, (W + 1) // 2
-            return x, H, W, x_down, Wh, Ww
+            Ws, Wh, Ww = (S + 1) // 2, (H + 1) // 2, (W + 1) // 2
+            return x, S, H, W, x_down, Ws, Wh, Ww
         else:
-            return x, H, W, x, H, W
+            return x, S, H, W, x, S, H, W
 
 
 class PatchEmbed(nn.Module):
@@ -368,10 +367,12 @@ class FocalNet(nn.Module):
         self.frozen_stages = frozen_stages
 
         # split image into non-overlapping patches
-        self.patch_embed = PatchEmbed(
-            patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None,
-            use_conv_embed=use_conv_embed, is_stem=True)
+        self.patch_embed = PatchEmbed3D(
+            vol_size=pretrain_img_size,
+            patch_size=patch_size,
+            in_chans=in_chans,
+            embed_dim=embed_dim,
+            norm_layer=norm_layer if self.patch_norm else None)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -388,7 +389,7 @@ class FocalNet(nn.Module):
                 drop=drop_rate,
                 drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
                 norm_layer=norm_layer,
-                downsample=PatchEmbed, #if (i_layer < self.num_layers - 1) else None,
+                downsample=PatchEmbed3D, #if (i_layer < self.num_layers - 1) else None,
                 focal_window=focal_windows[i_layer],
                 focal_level=focal_levels[i_layer],
                 use_conv_embed=use_conv_embed,
@@ -396,7 +397,7 @@ class FocalNet(nn.Module):
                 use_checkpoint=use_checkpoint)
             self.layers.append(layer)
 
-        num_features = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
+        num_features = [int(embed_dim * 2 ** (i+1)) for i in range(self.num_layers)]
         self.num_features = num_features
 
         # add a norm layer for each output
@@ -448,22 +449,22 @@ class FocalNet(nn.Module):
 
         tic = time.time()
         x = self.patch_embed(vol)
-        Wh, Ww = x.size(2), x.size(3)
-
-        x = x.flatten(2).transpose(1, 2)
-        x = self.pos_drop(x)
+        Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
 
         outs = []
         outs.append(x)
 
+        x = x.flatten(2).transpose(1, 2)
+        x = self.pos_drop(x)
+
         for i in range(self.num_layers):
             layer = self.layers[i]
-            x_out, H, W, x, Wh, Ww = layer(x, Wh, Ww)
+            x_out, S, H, W, x, Ws, Wh, Ww = layer(x, Ws, Wh, Ww)
             if i in self.out_indices:
                 norm_layer = getattr(self, f'norm{i}')
-                x_out = norm_layer(x_out)
+                x_out = norm_layer(x)
 
-                out = x_out.view(-1, H, W, self.num_features[i]).permute(0, 3, 1, 2).contiguous()
+                out = x_out.view(-1, Ws, Wh, Ww, self.num_features[i]).permute(0, 4, 1, 2, 3).contiguous()
                 outs.append(out)
         toc = time.time()
         return tuple(outs)

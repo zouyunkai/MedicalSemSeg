@@ -95,6 +95,8 @@ class PatchEmbed3D(nn.Module):
 
     def __init__(self, vol_size=(96, 96, 96), patch_size=(2, 2, 2), in_chans=1, embed_dim=48, norm_layer=None):
         super().__init__()
+        vol_size = ensure_tuple_rep(vol_size, 3)
+        patch_size = ensure_tuple_rep(patch_size, 3)
         patches_resolution = [vol_size[0] // patch_size[0], vol_size[1] // patch_size[1], vol_size[2] // patch_size[2]]
         self.vol_size = vol_size
         self.patch_size = patch_size

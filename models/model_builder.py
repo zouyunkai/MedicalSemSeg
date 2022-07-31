@@ -1,7 +1,7 @@
 import monai
 from monai.networks.nets import UNETR
 
-from models.backbones.focalnet import FocalNet
+from models.backbones.focalnet_3d import FocalNet
 from models.backbones.gc_vit_3d import GCViT
 from models.backbones.swin_3d import SwinTransformer3D
 from models.backbones.swin_nnformer import SwinTransformerNNFormer
