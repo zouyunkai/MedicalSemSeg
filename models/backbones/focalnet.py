@@ -315,7 +315,6 @@ class PatchEmbed(nn.Module):
         return x
 
 
-@BACKBONES.register_module()
 class FocalNet(nn.Module):
     """ FocalNet backbone.
 
