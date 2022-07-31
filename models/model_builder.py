@@ -1,6 +1,7 @@
 import monai
 from monai.networks.nets import UNETR
 
+from models.backbones.focalnet import FocalNet
 from models.backbones.gc_vit_3d import GCViT
 from models.backbones.swin_3d import SwinTransformer3D
 from models.backbones.swin_nnformer import SwinTransformerNNFormer
@@ -171,6 +172,24 @@ def build_model(cfg):
             num_heads=[3, 6, 12, 24],
             window_size=cfg.window_size,
             qkv_bias=cfg.qkv_bias,
+        )
+        model = SwinUNETRCustom(
+            encoder,
+            in_channels=cfg.in_chans,
+            out_channels=cfg.output_dim,
+            img_size=cfg.vol_size,
+            hidden_size=cfg.hidden_dim,
+            patch_size=cfg.patch_size,
+            input_downsampled=cfg.downsample_volume
+        )
+    elif cfg.model == 'FocalNetUNETR':
+        encoder = FocalNet(
+            pretrain_img_size=cfg.vol_size,
+            patch_size=cfg.patch_size,
+            in_chans=cfg.in_chans,
+            embed_dim=cfg.hidden_dim,
+            depths=[2, 2, 2, 2],
+            focal_windows=cfg.window_size
         )
         model = SwinUNETRCustom(
             encoder,
