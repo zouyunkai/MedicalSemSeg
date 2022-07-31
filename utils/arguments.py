@@ -47,6 +47,10 @@ def add_model_config_args(parser):
                         help='Number of channels for the volumes')
     group.add_argument('--hidden_dim', default=48, type=int,
                         help='Dimension of hidden/embedding dimension')
+    group.add_argument('--depths', nargs='*', default=[2, 2, 2, 2], type=int,
+                       help='Depth each internal layer')
+    group.add_argument('--num_heads', nargs='*', default=[3, 6, 12, 24], type=int,
+                       help='Number of transformer heads in each layer.')
 
     group.add_argument('--rel_pos_bias', action='store_true',
                         help='Use relative position bias in the encoder')

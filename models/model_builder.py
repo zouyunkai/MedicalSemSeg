@@ -122,8 +122,8 @@ def build_model(cfg):
             patch_size=cfg.patch_size,
             in_chans=cfg.in_chans,
             embed_dim=cfg.hidden_dim,
-            depths=[2, 2, 2, 2],
-            num_heads=[3, 6, 12, 24],
+            depths=cfg.depths,
+            num_heads=cfg.num_heads,
             window_size=cfg.window_size,
             qkv_bias=cfg.qkv_bias,
             use_learned_cls_vectors=cfg.learned_cls_vectors,
@@ -168,8 +168,8 @@ def build_model(cfg):
             in_chans=cfg.in_chans,
             dim=cfg.hidden_dim,
             mlp_ratio=3.,
-            depths=[2, 2, 2, 2],
-            num_heads=[3, 6, 12, 24],
+            depths=cfg.depths,
+            num_heads=cfg.num_heads,
             window_size=cfg.window_size,
             qkv_bias=cfg.qkv_bias,
         )
@@ -188,7 +188,7 @@ def build_model(cfg):
             patch_size=cfg.patch_size,
             in_chans=cfg.in_chans,
             embed_dim=cfg.hidden_dim,
-            depths=[2, 2, 2, 2],
+            depths=cfg.depths,
             focal_windows=cfg.window_size
         )
         model = SwinUNETRCustom(
