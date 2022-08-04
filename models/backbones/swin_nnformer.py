@@ -561,7 +561,7 @@ class SwinTransformerNNFormer(nn.Module):
         else:
             self.pos_embed = None
         if self.pos_embed is not None:
-            pos_embed = get_3d_sincos_pos_embed(embed_dim, self.patch_embed.num_patches)
+            pos_embed = get_3d_sincos_pos_embed(embed_dim, self.patch_embed.patches_resolution)
             self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
             #trunc_normal_(self.pos_embed, std=.02)
 
