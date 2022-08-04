@@ -84,9 +84,9 @@ def main(cfg):
 
     # following timm: set wd as 0 for bias and norm layers
     param_groups = optim_factory.add_weight_decay(model_without_ddp, cfg.weight_decay)
-    optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95), eps=1e-4)
+    optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95), eps=1e-6)
     print(optimizer)
-    loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision, init_scale=1024)
+    loss_scaler = torch.cuda.amp.GradScaler(enabled=cfg.mixed_precision, init_scale=4096)
     scheduler = LinearWarmupCosineAnnealingLR(optimizer,
                                               warmup_epochs=args.warmup_epochs,
                                               max_epochs=args.epochs)
