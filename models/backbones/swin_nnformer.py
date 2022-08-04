@@ -89,9 +89,13 @@ class WindowAttention(nn.Module):
 
         self.rel_pos_bias_affine = rel_pos_bias_affine
         if self.rel_pos_bias_affine:
-            self.rel_pos_bias_affine_emb = nn.Linear(3, self.window_size[0] ** 2 * self.window_size[1] ** 2 * self.window_size[
-                2] ** 2 * num_heads)
-            trunc_normal_(self.rel_pos_bias_affine_emb.weight, std=.02)
+            self.rel_pos_bias_affine_emb = nn.Parameter(
+                torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1) * (2 * window_size[2] - 1), num_heads,
+                            3))
+            self.rel_pos_bias_affine_lin = nn.Linear(3, 1)
+
+            trunc_normal_(self.rel_pos_bias_affine_emb, std=.02)
+            trunc_normal_(self.rel_pos_bias_affine_lin.weight, std=.02)
 
 
 
@@ -103,6 +107,7 @@ class WindowAttention(nn.Module):
         coords_flatten = torch.flatten(coords, 1)
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()
+
         relative_coords[:, :, 0] += self.window_size[0] - 1  # shift to start from 0
         relative_coords[:, :, 1] += self.window_size[1] - 1
         relative_coords[:, :, 2] += self.window_size[2] - 1
@@ -151,15 +156,17 @@ class WindowAttention(nn.Module):
             attn = attn + relative_position_bias.unsqueeze(0)
 
         if self.rel_pos_bias_affine and affine is not None:
+            relative_position_bias_affine = self.rel_pos_bias_affine_emb[self.relative_position_index.view(-1)] # (n_attn_tokens * n_attn_tokens, num_heads, 3)
+            relative_position_bias_affine = relative_position_bias_affine.view(n_attn_tokens, n_attn_tokens, self.num_heads, 3).unsqueeze(0).contiguous() # (1, n_attn_tokens, n_attn_tokens, num_heads, 3)
             n_windows = B_ // affine.shape[0]
-            aff_windows = window_affine(affine, n_windows)
-            rel_pos_bias_aff = self.rel_pos_bias_affine_emb(aff_windows)
-            rel_pos_bias_aff = rel_pos_bias_aff.view(B_,
-                                                     n_attn_tokens,
-                                                     n_attn_tokens,
-                                                     self.num_heads)
-            rel_pos_bias_aff = rel_pos_bias_aff.permute(0, 3, 1, 2).contiguous()
-            attn = attn + rel_pos_bias_aff
+            win_affine = window_affine(affine, n_windows) # (B_, 3)
+            win_affine = win_affine.unsqueeze(1).unsqueeze(1).unsqueeze(1) # (B_, 1, 1, 1, 3)
+            rpba = relative_position_bias_affine * win_affine # (B_, n_attn_tokens, n_attn_tokens, num_heads, 3)
+            rpba = self.rel_pos_bias_affine_lin(rpba) # (B_, n_attn_tokens, n_attn_tokens, num_heads, 1)
+            rpba = rpba.squeeze(4).permute(0, 3, 1, 2).contiguous() # (B_, num_heads, n_attn_tokens, n_attn_tokens)
+            attn = attn + rpba
+
+
 
         if mask is not None:
             nW = mask.shape[0]
