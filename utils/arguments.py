@@ -62,7 +62,7 @@ def add_model_config_args(parser):
 
     group.add_argument('--abs_pos_emb', action='store_true',
                         help='Use absolute position emb in the encoder')
-    group.set_defaults(abs_pos_bias=False)
+    group.set_defaults(abs_pos_emb=False)
 
     group.add_argument('--rel_crop_pos_emb', action='store_true',
                        help='Use a embedding that takes into account the relative position of the cropped volume')
