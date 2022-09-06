@@ -471,14 +471,14 @@ def build_decathlon_cv_datasets_dist(cfg, train_transform, val_transform):
         dataset_train = CacheDataset(
             data=partition_train,
             transform=train_transform,
-            cache_rate=1.0,
+            cache_rate=cfg.cache_rate_train,
             num_workers=cfg.n_workers_train
         )
 
         dataset_val = CacheDataset(
             data=partition_val,
             transform=val_transform,
-            cache_rate=1.0,
+            cache_rate=cfg.cache_rate_val,
             num_workers=cfg.n_workers_val
         )
     else:
@@ -504,7 +504,7 @@ def build_decathlon_cv_datasets(cfg, train_transform, val_transform):
         section='training',
         download=False,
         val_frac=0.0,
-        cache_rate=1.0,
+        cache_rate=cfg.cache_rate_train,
         num_workers=cfg.n_workers_train
     )
     if is_main_process():

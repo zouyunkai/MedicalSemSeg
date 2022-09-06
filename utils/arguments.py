@@ -235,6 +235,13 @@ def add_data_config_args(parser):
     group.add_argument('--no_cache_dataset', action='store_false', dest='cache_dataset',
                        help='When enabled only use the default type of Dataset instead of CacheDataset, mostly used for debugging.')
     group.set_defaults(cache_dataset=True)
+    group.add_argument('--cache_rate_train', type=float, default=1.0,
+                       help='The percentage of cached training data in total.')
+    group.set_defaults(cache_rate_train=False)
+    group.add_argument('--cache_rate_val', type=float, default=1.0,
+                       help='The percentage of cached validation data in total.')
+    group.set_defaults(cache_rate_val=False)
+
 
     return parser
 

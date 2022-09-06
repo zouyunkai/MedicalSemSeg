@@ -62,6 +62,7 @@ def main(cfg):
         num_workers=0,
         pin_memory=cfg.pin_mem,
         drop_last=True,
+        persistent_workers=False
     )
 
     data_loader_val = ThreadDataLoader(
@@ -70,6 +71,7 @@ def main(cfg):
         num_workers=0,
         pin_memory=cfg.pin_mem,
         drop_last=False,
+        persistent_workers=False
     )
 
     # Setup model
@@ -145,6 +147,8 @@ def main(cfg):
                 misc.save_model(
                     cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                     loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler, file_name='best_model')
+            if cfg.cache_dataset and cfg.cache_rate_val < 1.0:
+                dataset_val.set_data(dataset_val.data)
 
         if cfg.output_dir and (epoch % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
             misc.save_model(
@@ -162,6 +166,9 @@ def main(cfg):
 
         scheduler.step()
         #dataset_train.update_cache()
+        if cfg.cache_dataset and cfg.cache_rate_train < 1.0:
+            dataset_train.set_data(dataset_train.data)
+
     #dataset_train.shutdown()
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
