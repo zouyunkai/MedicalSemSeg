@@ -563,13 +563,13 @@ class SwinTransformerNNFormer(nn.Module):
             self.global_token = None
 
         if use_abs_pos_emb:
-            self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches, embed_dim), requires_grad=True)
+            self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches, embed_dim), requires_grad=False)
         else:
             self.pos_embed = None
         if self.pos_embed is not None:
-            #pos_embed = get_3d_sincos_pos_embed(embed_dim, self.patch_embed.patches_resolution)
-            #self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
-            trunc_normal_(self.pos_embed, std=.02)
+            pos_embed = get_3d_sincos_pos_embed(embed_dim, self.patch_embed.patches_resolution)
+            self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+            #trunc_normal_(self.pos_embed, std=.02)
 
 
         # build layers
