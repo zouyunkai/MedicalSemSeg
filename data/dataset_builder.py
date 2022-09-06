@@ -68,12 +68,12 @@ def build_training_transforms(cfg):
                 keys=["image", "label"],
                 source_key="image"
         ))
-    if cfg.t_crop_foreground_label:
+    if cfg.t_crop_foreground_kdiv:
         transforms.append(
             monai.transforms.CropForegroundd(
                 keys=["image", "label"],
-                source_key="label",
-                k_divisible=cfg.vol_size[0]
+                source_key="image",
+                k_divisible=cfg.vol_size
         ))
     if cfg.t_spatial_pad:
         transforms.append(

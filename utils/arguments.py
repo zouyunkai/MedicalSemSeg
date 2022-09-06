@@ -155,9 +155,9 @@ def add_transform_config_args(parser):
     group.add_argument('--t_crop_foreground_img', action='store_true',
                        help='Crop volumes of space that consists of air')
     group.set_defaults(t_crop_foreground_img=False)
-    group.add_argument('--t_crop_foreground_label', action='store_true',
-                       help='Crop volumes of space that consists of background labels')
-    group.set_defaults(t_crop_foreground_label=False)
+    group.add_argument('--t_crop_foreground_kdiv', action='store_true',
+                       help='Crop volumes of space that consists of air with a restriction that the resulting volume must be divisible by the target crop size')
+    group.set_defaults(t_crop_foreground_kdiv=False)
     group.add_argument('--t_sample_background', action='store_true',
                        help='If background voxels should be used as centers during random cropping')
     group.set_defaults(t_sample_background=False)
