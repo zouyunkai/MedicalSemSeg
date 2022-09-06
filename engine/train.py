@@ -49,8 +49,9 @@ def train_one_epoch(
         aff_xyz = aff_xyz.float()
         aff_xyz = aff_xyz.to(device, non_blocking=True)
 
+        batch_relative_crop_loc = None
         for t in batch['image_transforms']:
-            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd' or t['class'][0] == 'RandSpatialCropd':
+            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd':
                 batch_relative_crop_loc = misc.get_rel_crop_loc(t)
                 batch_relative_crop_loc.to(device, non_blocking=True)
 
