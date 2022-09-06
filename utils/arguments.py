@@ -143,6 +143,10 @@ def add_transform_config_args(parser):
                        help='Clip and normalize ct intensity range to the fixed range between ct min and ct max')
     group.set_defaults(t_fixed_ct_intensity=False)
 
+    group.add_argument('--t_percentile_ct_intensity', action='store_true',
+                       help='Clip and normalize ct intensity range to the percentile based ct min and ct max. Default is 5 to 95 percent.')
+    group.set_defaults(t_percentile_ct_intensity=False)
+
     group.add_argument('--t_ct_min', default=-1000, type=int,
                         help='The minimum CT intensity value to clip to')
     group.add_argument('--t_ct_max', default=1000, type=int,
@@ -166,16 +170,26 @@ def add_transform_config_args(parser):
     group.add_argument('--t_rand_crop_dilated_center', action='store_true',
                        help='Crop subvolumes by selecting voxels not only of a specific class fg/bg as the center but with a dilation from those voxels')
     group.set_defaults(t_rand_crop_dilated_center=False)
+    group.add_argument('--t_rand_spatial_crop', action='store_true',
+                       help='Basic random spatial crop')
+    group.set_defaults(t_rand_spatial_crop=False)
 
 
     group.add_argument('--t_spatial_pad', action='store_true',
                        help='Pad volumes to the input volume size')
     group.set_defaults(t_spatial_pad=False)
 
+    group.add_argument('--t_convert_labels_to_brats', action='store_true',
+                       help='Convert labels to multi-channel based on BRATS classes')
+    group.set_defaults(t_convert_labels_to_brats=False)
+
 
     group.add_argument('--t_normalize', action='store_true',
-                       help='Pad volumes to the input volume size')
+                       help='Normalize intensity values')
     group.set_defaults(t_normalize=False)
+    group.add_argument('--t_normalize_channel_wise', action='store_true',
+                       help='Normalize intensity values channel wise, used for multi-channel input such as MRI')
+    group.set_defaults(t_normalize_channel_wise=False)
     group.add_argument('--t_norm_mean', default=0.1943, type=float,
                        help='The probability for a random flip in a direction')
     group.add_argument('--t_norm_std', default=0.2786, type=float,

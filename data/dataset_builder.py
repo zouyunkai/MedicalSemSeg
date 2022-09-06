@@ -17,11 +17,12 @@ from utils.misc import get_world_size, is_main_process, get_rank, save_decathlon
 
 
 def build_training_transforms(cfg):
-    transforms = [
-        monai.transforms.LoadImaged(keys=["image", "label"]),
-        monai.transforms.AddChanneld(keys=["image", "label"]),
-        monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS")
-    ]
+    transforms = [ monai.transforms.LoadImaged(keys=["image", "label"]) ]
+    if cfg.in_chans == 1:
+        transforms.append(monai.transforms.AddChanneld(keys=["image", "label"]))
+        transforms.append(monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS"))
+    if cfg.t_convert_labels_to_brats:
+        transforms.append(monai.transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"))
     if cfg.t_voxel_spacings:
         transforms.append(
             monai.transforms.Spacingd(
@@ -49,7 +50,7 @@ def build_training_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
-    else:
+    elif cfg.t_percentile_ct_intensity:
         transforms.append(
             monai.transforms.ScaleIntensityRangePercentilesD(
                 keys=['image'],
@@ -137,6 +138,10 @@ def build_training_transforms(cfg):
                 image_threshold=0,
             )
         )
+    elif cfg.t_rand_spatial_crop:
+        transforms.append(monai.transforms.RandSpatialCropd(
+                keys=["image", "label"], roi_size=cfg.vol_size, random_size=False
+            ))
     if cfg.t_rand_crop_dilated_center:
         transforms.append(
             monai.transforms.Lambdad(
@@ -187,13 +192,22 @@ def build_training_transforms(cfg):
         )
     )
     if cfg.t_normalize:
-        transforms.append(
-            monai.transforms.NormalizeIntensityd(
-                keys=['image'],
-                subtrahend=cfg.t_norm_mean,
-                divisor = cfg.t_norm_std
+        if cfg.t_normalize_channel_wise:
+            transforms.append(
+                monai.transforms.NormalizeIntensityd(
+                    keys=['image'],
+                    nonzero=True,
+                    channel_wise=True
+                )
             )
-        )
+        else:
+            transforms.append(
+                monai.transforms.NormalizeIntensityd(
+                    keys=['image'],
+                    subtrahend=cfg.t_norm_mean,
+                    divisor = cfg.t_norm_std
+                )
+            )
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
     )
@@ -204,11 +218,12 @@ def build_training_transforms(cfg):
 
 
 def build_validation_transforms(cfg):
-    transforms = [
-        monai.transforms.LoadImaged(keys=["image", "label"]),
-        monai.transforms.AddChanneld(keys=["image", "label"]),
-        monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS")
-    ]
+    transforms = [ monai.transforms.LoadImaged(keys=["image", "label"]) ]
+    if cfg.in_chans == 1:
+        transforms.append(monai.transforms.AddChanneld(keys=["image", "label"]))
+        transforms.append(monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS"))
+    if cfg.t_convert_labels_to_brats:
+        transforms.append(monai.transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"))
     if cfg.t_voxel_spacings:
         transforms.append(
             monai.transforms.Spacingd(
@@ -236,7 +251,7 @@ def build_validation_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
-    else:
+    elif cfg.t_percentile_ct_intensity:
         transforms.append(
             monai.transforms.ScaleIntensityRangePercentilesD(
                 keys=['image'],
@@ -261,13 +276,22 @@ def build_validation_transforms(cfg):
                 spatial_size=cfg.vol_size,
         ))
     if cfg.t_normalize:
-        transforms.append(
-            monai.transforms.NormalizeIntensityd(
-                keys=['image'],
-                subtrahend=cfg.t_norm_mean,
-                divisor = cfg.t_norm_std
+        if cfg.t_normalize_channel_wise:
+            transforms.append(
+                monai.transforms.NormalizeIntensityd(
+                    keys=['image'],
+                    nonzero=True,
+                    channel_wise=True
+                )
             )
-        )
+        else:
+            transforms.append(
+                monai.transforms.NormalizeIntensityd(
+                    keys=['image'],
+                    subtrahend=cfg.t_norm_mean,
+                    divisor = cfg.t_norm_std
+                )
+            )
     transforms.append(
         monai.transforms.ToTensord(keys=["image", "label"])
     )
@@ -277,11 +301,10 @@ def build_validation_transforms(cfg):
     return monai.transforms.Compose(transforms)
 
 def build_test_transforms(cfg):
-    transforms = [
-        monai.transforms.LoadImaged(keys=["image"]),
-        monai.transforms.AddChanneld(keys=["image"]),
-        #monai.transforms.Orientationd(keys=["image"], axcodes="RAS")
-    ]
+    transforms = [ monai.transforms.LoadImaged(keys=["image"]) ]
+    if cfg.in_chans == 1:
+        transforms.append(monai.transforms.AddChanneld(keys=["image"]))
+        #transforms.append(monai.transforms.Orientationd(keys=["image"], axcodes="RAS"))
     if cfg.t_voxel_spacings:
         transforms.append(
             monai.transforms.Spacingd(
@@ -309,7 +332,7 @@ def build_test_transforms(cfg):
                 b_max=1.0,
                 clip=True,
         ))
-    else:
+    elif cfg.t_percentile_ct_intensity:
         transforms.append(
             monai.transforms.ScaleIntensityRangePercentilesD(
                 keys=['image'],
@@ -322,13 +345,22 @@ def build_test_transforms(cfg):
             )
         )
     if cfg.t_normalize:
-        transforms.append(
-            monai.transforms.NormalizeIntensityd(
-                keys=['image'],
-                subtrahend=cfg.t_norm_mean,
-                divisor = cfg.t_norm_std
+        if cfg.t_normalize_channel_wise:
+            transforms.append(
+                monai.transforms.NormalizeIntensityd(
+                    keys=['image'],
+                    nonzero=True,
+                    channel_wise=True
+                )
             )
-        )
+        else:
+            transforms.append(
+                monai.transforms.NormalizeIntensityd(
+                    keys=['image'],
+                    subtrahend=cfg.t_norm_mean,
+                    divisor = cfg.t_norm_std
+                )
+            )
     transforms.append(
         monai.transforms.ToTensord(keys=["image"])
     )
