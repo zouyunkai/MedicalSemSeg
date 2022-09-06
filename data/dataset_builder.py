@@ -21,6 +21,8 @@ def build_training_transforms(cfg):
     if cfg.in_chans == 1:
         transforms.append(monai.transforms.AddChanneld(keys=["image", "label"]))
         transforms.append(monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS"))
+    else:
+        transforms.append(monai.transforms.AsChannelFirstD(keys=['image', 'label']))
     if cfg.t_convert_labels_to_brats:
         transforms.append(monai.transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"))
     if cfg.t_voxel_spacings:
@@ -226,6 +228,8 @@ def build_validation_transforms(cfg):
     if cfg.in_chans == 1:
         transforms.append(monai.transforms.AddChanneld(keys=["image", "label"]))
         transforms.append(monai.transforms.Orientationd(keys=["image", "label"], axcodes="RAS"))
+    else:
+        transforms.append(monai.transforms.AsChannelFirstD(keys=['image', 'label']))
     if cfg.t_convert_labels_to_brats:
         transforms.append(monai.transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"))
     if cfg.t_voxel_spacings:
@@ -309,6 +313,8 @@ def build_test_transforms(cfg):
     if cfg.in_chans == 1:
         transforms.append(monai.transforms.AddChanneld(keys=["image"]))
         #transforms.append(monai.transforms.Orientationd(keys=["image"], axcodes="RAS"))
+    else:
+        transforms.append(monai.transforms.AsChannelFirstD(keys=['image', 'label']))
     if cfg.t_voxel_spacings:
         transforms.append(
             monai.transforms.Spacingd(
