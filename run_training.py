@@ -106,6 +106,10 @@ def main(cfg):
     else:
         raise RuntimeError('Could not parse loss function argument.')
 
+    # Init best validation result
+    best_val_metric = 0.0
+    best_epoch = 0
+
     # Run training
     start_time = time.time()
     #dataset_train.start()
@@ -131,10 +135,21 @@ def main(cfg):
                      'epoch': epoch, }
             log_stats = {**log_stats, **log_stats_val}
 
+            if log_stats_val['val/mDice'] > best_val_metric:
+                print("New record at epoch {}! Previous best metric: {}, new best metric: {}".format(epoch,
+                                                                                                     best_val_metric,
+                                                                                                     log_stats_val[
+                                                                                                         'val/mDice']))
+                best_val_metric = log_stats_val['val/mDice']
+                best_epoch = epoch
+                misc.save_model(
+                    cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
+                    loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler, file_name='best_model')
+
         if cfg.output_dir and (epoch % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
             misc.save_model(
                 cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
-                loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler)
+                loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler, file_name='checkpoint-{}'.format(epoch))
 
         if misc.is_main_process() and cfg.neptune_logging:
             misc.log_to_neptune(neptune_logger, log_stats)
@@ -150,7 +165,9 @@ def main(cfg):
     #dataset_train.shutdown()
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('Training time {}'.format(total_time_str))
+    print('Training complete! Total training time {}. Best validation metric {} at epoch {} '.format(total_time_str,
+                                                                                                     best_val_metric,
+                                                                                                     best_epoch))
     if misc.is_main_process() and cfg.neptune_logging:
         neptune_logger.stop()
     torch.distributed.destroy_process_group()

@@ -265,11 +265,10 @@ def init_distributed_mode(cfg):
     torch.distributed.barrier()
     setup_for_distributed(cfg.rank == 0)
 
-def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler, scheduler):
+def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler, scheduler, file_name):
     output_dir = Path(cfg.output_dir)
-    epoch_name = str(epoch)
     if loss_scaler is not None:
-        checkpoint_paths = [output_dir / ('checkpoint-%s.pth' % epoch_name)]
+        checkpoint_paths = [output_dir / ('{}.pth'.format(file_name))]
         for checkpoint_path in checkpoint_paths:
             to_save = {
                 'model': model_without_ddp.state_dict(),
@@ -283,7 +282,7 @@ def save_model(cfg, epoch, model, model_without_ddp, optimizer, loss_scaler, sch
             save_on_master(to_save, checkpoint_path)
     else:
         client_state = {'epoch': epoch}
-        model.save_checkpoint(save_dir=cfg.output_dir, tag="checkpoint-%s" % epoch_name, client_state=client_state)
+        model.save_checkpoint(save_dir=cfg.output_dir, tag=file_name, client_state=client_state)
 
 def load_model(cfg, model_without_ddp, optimizer, loss_scaler, scheduler):
     if cfg.resume:
