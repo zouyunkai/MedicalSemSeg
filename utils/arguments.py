@@ -199,19 +199,19 @@ def add_transform_config_args(parser):
     group.add_argument('--t_n_patches_per_image', default=1, type=int,
                        help='The number of samples for the random cropping')
 
-    group.add_argument('--t_flip_prob', default=0.1, type=float,
+    group.add_argument('--t_flip_prob', default=0.0, type=float,
                        help='The probability for a random flip in a direction')
 
-    group.add_argument('--t_rot_prob', default=0.1, type=float,
+    group.add_argument('--t_rot_prob', default=0.0, type=float,
                        help='The probability for a random rotate in a direction')
 
     group.add_argument('--t_intensity_shift_os', default=0.1, type=float,
                        help='The offset for random intensity shift')
-    group.add_argument('--t_intensity_shift_prob', default=0.1, type=float,
+    group.add_argument('--t_intensity_shift_prob', default=0.0, type=float,
                        help='The probability for a random intensity shift')
     group.add_argument('--t_intensity_scale_factors', default=0.1, type=float,
                        help='The offset for random intensity shift')
-    group.add_argument('--t_intensity_scale_prob', default=0.1, type=float,
+    group.add_argument('--t_intensity_scale_prob', default=0.0, type=float,
                        help='The probability for a random intensity shift')
 
     return parser

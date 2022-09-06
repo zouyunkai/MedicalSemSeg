@@ -149,48 +149,52 @@ def build_training_transforms(cfg):
                 func=lambda x: 0
             )
         )
-    transforms.append(
-        monai.transforms.RandFlipd(
-            keys=["image", "label"],
-            spatial_axis=[0],
-            prob=cfg.t_flip_prob,
+    if cfg.t_flip_prob > 0.0:
+        transforms.append(
+            monai.transforms.RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[0],
+                prob=cfg.t_flip_prob,
+            )
         )
-    )
-    transforms.append(
-        monai.transforms.RandFlipd(
-            keys=["image", "label"],
-            spatial_axis=[1],
-            prob=cfg.t_flip_prob,
+        transforms.append(
+            monai.transforms.RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[1],
+                prob=cfg.t_flip_prob,
+            )
         )
-    )
-    transforms.append(
-        monai.transforms.RandFlipd(
-            keys=["image", "label"],
-            spatial_axis=[2],
-            prob=cfg.t_flip_prob,
+        transforms.append(
+            monai.transforms.RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[2],
+                prob=cfg.t_flip_prob,
+            )
         )
-    )
-    transforms.append(
-        monai.transforms.RandRotate90d(
-            keys=["image", "label"],
-            prob=cfg.t_rot_prob,
-            max_k=3,
+    if cfg.t_rot_prob > 0.0:
+        transforms.append(
+            monai.transforms.RandRotate90d(
+                keys=["image", "label"],
+                prob=cfg.t_rot_prob,
+                max_k=3,
+            )
         )
-    )
-    transforms.append(
-        monai.transforms.RandShiftIntensityd(
-            keys=["image"],
-            offsets=cfg.t_intensity_shift_os,
-            prob=cfg.t_intensity_shift_prob,
+    if cfg.t_intensity_shift_prob > 0.0:
+        transforms.append(
+            monai.transforms.RandShiftIntensityd(
+                keys=["image"],
+                offsets=cfg.t_intensity_shift_os,
+                prob=cfg.t_intensity_shift_prob,
+            )
         )
-    )
-    transforms.append(
-        monai.transforms.RandScaleIntensityd(
-            keys=["image"],
-            factors=cfg.t_intensity_scale_factors,
-            prob=cfg.t_intensity_scale_prob,
+    if cfg.t_intensity_scale_prob > 0.0:
+        transforms.append(
+            monai.transforms.RandScaleIntensityd(
+                keys=["image"],
+                factors=cfg.t_intensity_scale_factors,
+                prob=cfg.t_intensity_scale_prob,
+            )
         )
-    )
     if cfg.t_normalize:
         if cfg.t_normalize_channel_wise:
             transforms.append(
