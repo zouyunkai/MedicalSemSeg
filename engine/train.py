@@ -50,7 +50,7 @@ def train_one_epoch(
         aff_xyz = aff_xyz.to(device, non_blocking=True)
 
         for t in batch['image_transforms']:
-            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd':
+            if t['class'][0] == 'RandCropByPosNegLabeld' or t['class'][0] == 'RandCropByClassesd' or t['class'][0] == 'RandSpatialCropd':
                 batch_relative_crop_loc = misc.get_rel_crop_loc(t)
                 batch_relative_crop_loc.to(device, non_blocking=True)
 
