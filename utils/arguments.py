@@ -158,12 +158,15 @@ def add_transform_config_args(parser):
     group.add_argument('--t_crop_foreground_kdiv', action='store_true',
                        help='Crop volumes of space that consists of air with a restriction that the resulting volume must be divisible by the target crop size')
     group.set_defaults(t_crop_foreground_kdiv=False)
-    group.add_argument('--t_sample_background', action='store_true',
-                       help='If background voxels should be used as centers during random cropping')
-    group.set_defaults(t_sample_background=False)
     group.add_argument('--t_rand_crop_fgbg', action='store_true',
                        help='Crop subvolumes based on foreground/background')
     group.set_defaults(t_rand_crop_fgbg=False)
+    group.add_argument('--t_rand_crop_pos_weight', type=float, default=1.0,
+                       help='Weight used for positive examples in random cropping')
+    group.set_defaults(t_rand_crop_pos_weight=False)
+    group.add_argument('--t_rand_crop_neg_weight', type=float, default=1.0,
+                       help='Weight used for negative examples in random cropping')
+    group.set_defaults(t_rand_crop_neg_weight=False)
     group.add_argument('--t_rand_crop_classes', action='store_true',
                        help='Crop subvolumes based on classes')
     group.set_defaults(t_rand_crop_classes=False)
