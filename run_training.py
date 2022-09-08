@@ -111,6 +111,7 @@ def main(cfg):
     # Init best validation result
     best_val_metric = 0.0
     best_epoch = 0
+    checkpoint_files = []
 
     # Run training
     start_time = time.time()
@@ -150,10 +151,12 @@ def main(cfg):
             if cfg.cache_dataset and cfg.cache_rate_val < 1.0:
                 dataset_val.set_data(dataset_val.data)
 
-        if cfg.output_dir and (epoch % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
+        if cfg.output_dir and ((epoch + 1) % cfg.save_ckpt_freq == 0 or epoch + 1 == cfg.epochs):
+            fn = 'checkpoint-{}'.format(epoch)
             misc.save_model(
                 cfg=cfg, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
-                loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler, file_name='checkpoint-{}'.format(epoch))
+                loss_scaler=loss_scaler, epoch=epoch, scheduler=scheduler, file_name=fn)
+            checkpoint_files.append(os.path.join(cfg.output_dir, fn + '.pth'))
 
         if misc.is_main_process() and cfg.neptune_logging:
             misc.log_to_neptune(neptune_logger, log_stats)
@@ -175,6 +178,9 @@ def main(cfg):
     print('Training complete! Total training time {}. Best validation metric {} at epoch {} '.format(total_time_str,
                                                                                                      best_val_metric,
                                                                                                      best_epoch))
+    print("Cleaning up old checkpoints...")
+    misc.cleanup_checkpoints(checkpoint_files)
+    print("Finished cleaning up checkpoints!")
     if misc.is_main_process() and cfg.neptune_logging:
         neptune_logger.stop()
     torch.distributed.destroy_process_group()
