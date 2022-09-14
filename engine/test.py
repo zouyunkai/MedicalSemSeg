@@ -146,26 +146,28 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
                    target_size =  t['orig_size']
             test_outputs_rs = misc.resample_3d(test_outputs, target_size)
 
-        if cfg.save_eval_output:
-            out_dir = os.path.join(cfg.output_dir, 'test_output', 'Fold' + str(cfg.cv_fold))
-            os.makedirs(out_dir, exist_ok=True)
 
+        if cfg.save_eval_output:
             affine[0,0:3,3] = 0
             original_affine[0, 0:3, 3] = 0
-            '''
-            write_nifti(test_outputs.astype(np.uint8), os.path.join(out_dir, 'pred' + img_name),
-                        affine=affine[0], mode='nearest')
-            write_nifti(test_outputs.astype(np.uint8), os.path.join(out_dir, 'label' + img_name),
-                        affine=affine[0], target_affine=original_affine[0], output_spatial_shape=target_size,
-                        mode='nearest')
 
-            '''
-            if cfg.t_voxel_spacings:
-                nib.save(nib.Nifti1Image(test_outputs_rs.astype(np.uint8), original_affine[0].numpy()),
-                         os.path.join(out_dir, 'label' + img_name))
+            out_dir = os.path.join(cfg.output_dir, 'test_output', 'Fold' + str(cfg.cv_fold))
+            out_dir_pred = os.path.join(out_dir, 'pred')
+            out_dir_img = os.path.join(out_dir, 'img')
+            os.makedirs(out_dir_pred, exist_ok=True)
+            os.makedirs(out_dir_img, exist_ok=True)
+
             nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), affine[0].numpy()),
-                     os.path.join(out_dir, 'pred' + img_name))
+                     os.path.join(out_dir_pred, img_name))
             nib.save(nib.Nifti1Image(inputs.squeeze().cpu().numpy(), affine[0].numpy()),
-                     os.path.join(out_dir, 'img' + img_name))
+                     os.path.join(out_dir_img, img_name))
+
+            if cfg.t_voxel_spacings:
+                out_dir_rs = os.path.join(out_dir, 'rs')
+                os.makedirs(out_dir_rs, exist_ok=True)
+
+                nib.save(nib.Nifti1Image(test_outputs_rs.astype(np.uint8), original_affine[0].numpy()),
+                         os.path.join(out_dir_rs, img_name))
+
 
     return
