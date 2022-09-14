@@ -123,9 +123,6 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
         aff_xyz = aff_xyz.float()
         aff_xyz = aff_xyz.to(device, non_blocking=True)
 
-        for t in batch['image_transforms']:
-            if t['class'][0] == 'Spacingd':
-               target_size =  t['orig_size']
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=cfg.mixed_precision):
                 outputs = sliding_window_inference(inputs=inputs,
@@ -142,7 +139,12 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
 
         test_outputs = torch.softmax(outputs, 1).cpu().numpy()
         test_outputs = np.argmax(test_outputs, axis=1).astype(np.uint8)[0]
-        test_outputs_rs = misc.resample_3d(test_outputs, target_size)
+
+        if cfg.t_voxel_spacings:
+            for t in batch['image_transforms']:
+                if t['class'][0] == 'Spacingd':
+                   target_size =  t['orig_size']
+            test_outputs_rs = misc.resample_3d(test_outputs, target_size)
 
         if cfg.save_eval_output:
             out_dir = os.path.join(cfg.output_dir, 'test_output', 'Fold' + str(cfg.cv_fold))
@@ -158,8 +160,9 @@ def test_model(model, data_loader, device, cfg, log_writer=None):
                         mode='nearest')
 
             '''
-            nifti_output_rs = nib.Nifti1Image(test_outputs_rs.astype(np.uint8), original_affine[0].numpy())
-            nib.save(nifti_output_rs, os.path.join(out_dir, 'label' + img_name))
+            if cfg.t_voxel_spacings:
+                nib.save(nib.Nifti1Image(test_outputs_rs.astype(np.uint8), original_affine[0].numpy()),
+                         os.path.join(out_dir, 'label' + img_name))
             nib.save(nib.Nifti1Image(test_outputs.astype(np.uint8), affine[0].numpy()),
                      os.path.join(out_dir, 'pred' + img_name))
             nib.save(nib.Nifti1Image(inputs.squeeze().cpu().numpy(), affine[0].numpy()),
