@@ -439,3 +439,13 @@ def get_rel_crop_loc(rand_crop_transform_dict):
     rel_z = c[2] / os[2]
     rel_crop_loc = torch.stack([rel_x, rel_y, rel_z], dim=1)
     return rel_crop_loc
+
+def cleanup_checkpoints(checkpoint_files):
+    for i in range(len(checkpoint_files) - 1):
+        try:
+            os.remove(checkpoint_files[i])
+            print("Removed old checkpoint {} successfully!".format(checkpoint_files[i]))
+        except OSError as ose:
+            print("Could not remove file {} because of error {}".format(checkpoint_files[i], ose))
+        except Exception as e:
+            print("Could not remove file because of error {}".format(e))
