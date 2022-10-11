@@ -493,7 +493,6 @@ class SwinTransformerNNFormer(nn.Module):
                  drop_path_rate=0.2,
                  norm_layer=nn.LayerNorm,
                  patch_norm=True,
-                 out_indices=(0, 1, 2, 3),
                  use_learned_cls_vectors=True,
                  lcv_transform=None,
                  lcv_vector_dim=6,
@@ -515,7 +514,7 @@ class SwinTransformerNNFormer(nn.Module):
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
         self.patch_norm = patch_norm
-        self.out_indices = out_indices
+        self.out_indices = list(range(depths))
         self.use_learned_cls_vectors = use_learned_cls_vectors
         self.lcv_concat_vector = lcv_concat_vector
         self.lcv_only = lcv_only
