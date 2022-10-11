@@ -42,6 +42,16 @@ class Mlp(nn.Module):
         x = self.drop(x)
         return x
 
+class BasicConv3d(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, **kwargs: Any) -> None:
+        super().__init__()
+        self.conv = nn.Conv3d(in_channels, out_channels, bias=False, **kwargs)
+        self.bn = nn.BatchNorm3d(out_channels, eps=0.001)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.conv(x)
+        x = self.bn(x)
+        return F.relu(x, inplace=True)
 
 class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
@@ -54,17 +64,17 @@ class InceptionHead(nn.Module):
         self.branch_dim = hidden_features // branches
         self.input_resolution = input_resolution
 
-        self.branch1x1 = nn.Conv3d(in_features, self.branch_dim, kernel_size=1)
+        self.branch1x1 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
 
-        self.branch3x3_1 = nn.Conv3d(in_features, self.branch_dim, kernel_size=1)
-        self.branch3x3_2 = nn.Conv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
+        self.branch3x3_1 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
+        self.branch3x3_2 = BasicConv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
 
-        self.branch3x3dbl_1 = nn.Conv3d(in_features, self.branch_dim, kernel_size=1)
-        self.branch3x3dbl_2 = nn.Conv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
-        self.branch3x3dbl_3 = nn.Conv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
+        self.branch3x3dbl_1 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
+        self.branch3x3dbl_2 = BasicConv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
+        self.branch3x3dbl_3 = BasicConv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
 
         self.branch_pool_1 = nn.MaxPool3d(kernel_size=3, stride=1, padding=1)
-        self.branch_pool_2 = nn.Conv3d(in_features, self.branch_dim, kernel_size=1)
+        self.branch_pool_2 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
 
         self.fc = nn.Linear(self.hidden_features, self.out_features)
         self.drop = nn.Dropout(drop)
