@@ -204,7 +204,6 @@ def build_model(cfg):
             img_size=cfg.vol_size,
             hidden_size=cfg.hidden_dim,
             patch_size=cfg.patch_size,
-            input_downsampled=cfg.downsample_volume
         )
     elif cfg.model == 'nnFormer':
         model = nnFormer(
@@ -234,7 +233,6 @@ def build_model(cfg):
             img_size=cfg.vol_size,
             hidden_size=cfg.hidden_dim,
             patch_size=cfg.patch_size,
-            input_downsampled=cfg.downsample_volume
         )
     elif cfg.model == 'FocalNetUNETR':
         encoder = FocalNet(
@@ -252,7 +250,6 @@ def build_model(cfg):
             img_size=cfg.vol_size,
             hidden_size=cfg.hidden_dim,
             patch_size=cfg.patch_size,
-            input_downsampled=cfg.downsample_volume
         )
     return model
 
