@@ -514,7 +514,7 @@ class SwinTransformerNNFormer(nn.Module):
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
         self.patch_norm = patch_norm
-        self.out_indices = list(range(depths))
+        self.out_indices = list(range(self.num_layers))
         self.use_learned_cls_vectors = use_learned_cls_vectors
         self.lcv_concat_vector = lcv_concat_vector
         self.lcv_only = lcv_only
