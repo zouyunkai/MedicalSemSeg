@@ -111,10 +111,6 @@ def add_model_config_args(parser):
                        help='Create the patch vector as the mean of the voxel vectors')
     group.set_defaults(lcv_patch_voxel_mean=False)
 
-    group.add_argument('--downsample_volume', action='store_true',
-                       help='When downsampling is active, the transforms crop the volume to a larger size and that volume is then downsampled to vol_size in a larger patch embedding')
-    group.set_defaults(downsample_volume=False)
-
     group.add_argument('--use_abs_pos_emb', action='store_true',
                        help='Use global absolute position embeddings')
     group.set_defaults(use_abs_pos_emb=False)

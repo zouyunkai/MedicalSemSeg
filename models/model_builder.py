@@ -150,8 +150,7 @@ def build_model(cfg):
             out_channels=cfg.output_dim,
             img_size=cfg.vol_size,
             hidden_size=cfg.hidden_dim,
-            patch_size=cfg.patch_size,
-            input_downsampled=cfg.downsample_volume
+            patch_size=cfg.patch_size
         )
     elif cfg.model == 'SwInception':
         if cfg.t_fixed_ct_intensity:
