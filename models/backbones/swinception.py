@@ -53,46 +53,77 @@ class BasicConv3d(nn.Module):
         x = self.bn(x)
         return F.relu(x, inplace=True)
 
+class Inception1x1(nn.Module):
+    def __init__(self, in_features, out_features, **kwargs: Any) -> None:
+        super().__init__()
+        self.branch1x1 = BasicConv3d(in_features, out_features, kernel_size=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        branch1x1 = self.branch1x1(x)
+        return branch1x1
+
+class Inception3x3(nn.Module):
+    def __init__(self, in_features, out_features, **kwargs: Any) -> None:
+        super().__init__()
+        self.branch3x3_1 = BasicConv3d(in_features, out_features, kernel_size=1)
+        self.branch3x3_2 = BasicConv3d(out_features, out_features, kernel_size=3, padding=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        branch3x3 = self.branch3x3_1(x)
+        branch3x3 = self.branch3x3_2(branch3x3)
+        return branch3x3
+
+class Inception5x5(nn.Module):
+    def __init__(self, in_features, out_features, **kwargs: Any) -> None:
+        super().__init__()
+        self.branch3x3dbl_1 = BasicConv3d(in_features, out_features, kernel_size=1)
+        self.branch3x3dbl_2 = BasicConv3d(out_features, out_features, kernel_size=3, padding=1)
+        self.branch3x3dbl_3 = BasicConv3d(out_features, out_features, kernel_size=3, padding=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        branch3x3dbl = self.branch3x3dbl_1(x)
+        branch3x3dbl = self.branch3x3dbl_2(branch3x3dbl)
+        branch3x3dbl = self.branch3x3dbl_3(branch3x3dbl)
+        return branch3x3dbl
+
+class InceptionPool(nn.Module):
+    def __init__(self, in_features, out_features, **kwargs: Any) -> None:
+        super().__init__()
+        self.branch_pool_1 = nn.MaxPool3d(kernel_size=3, stride=1, padding=1)
+        self.branch_pool_2 = BasicConv3d(in_features, out_features, kernel_size=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        branch_pool = self.branch_pool_1(x)
+        branch_pool = self.branch_pool_2(branch_pool)
+        return branch_pool
+
 class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
 
-    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, branches=4, drop=0.):
+    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, n_branches=2, drop=0.):
         super().__init__()
         self.out_features = out_features or in_features
         self.hidden_features = hidden_features or in_features
-        self.branches = branches
-        self.branch_dim = hidden_features // branches
+        self.n_branches = n_branches
         self.input_resolution = input_resolution
 
-        self.branch1x1 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
+        inception_blocks = [Inception1x1, Inception3x3, Inception5x5, InceptionPool]
+        block_weights = np.array([3, 1, 1, 1])[0:n_branches]
+        norm_block_weights = (1 / sum(block_weights)) * block_weights
+        self.branch_dims = [int(hidden_features * norm_block_weights[b]) for b in range(n_branches)]
+        assert sum(self.branch_dims) == hidden_features
 
-        self.branch3x3_1 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
-        self.branch3x3_2 = BasicConv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
-
-        self.branch3x3dbl_1 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
-        self.branch3x3dbl_2 = BasicConv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
-        self.branch3x3dbl_3 = BasicConv3d(self.branch_dim, self.branch_dim, kernel_size=3, padding=1)
-
-        self.branch_pool_1 = nn.MaxPool3d(kernel_size=3, stride=1, padding=1)
-        self.branch_pool_2 = BasicConv3d(in_features, self.branch_dim, kernel_size=1)
+        self.branches = nn.ModuleList()
+        for b in range(n_branches):
+            self.branches.append(inception_blocks[b](in_features, self.branch_dims[b]))
 
         self.fc = nn.Linear(self.hidden_features, self.out_features)
         self.drop = nn.Dropout(drop)
 
     def _forward(self, x: Tensor) -> List[Tensor]:
-        branch1x1 = self.branch1x1(x)
-
-        branch3x3 = self.branch3x3_1(x)
-        branch3x3 = self.branch3x3_2(branch3x3)
-
-        branch3x3dbl = self.branch3x3dbl_1(x)
-        branch3x3dbl = self.branch3x3dbl_2(branch3x3dbl)
-        branch3x3dbl = self.branch3x3dbl_3(branch3x3dbl)
-
-        branch_pool = self.branch_pool_1(x)
-        branch_pool = self.branch_pool_2(branch_pool)
-
-        outputs = [branch1x1, branch3x3, branch3x3dbl, branch_pool]
+        outputs = []
+        for b in self.n_branches:
+            outputs.append(b(x))
         return outputs
 
     def forward(self, x: Tensor) -> Tensor:
