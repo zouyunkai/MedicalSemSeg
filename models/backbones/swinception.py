@@ -122,7 +122,7 @@ class InceptionHead(nn.Module):
 
     def _forward(self, x: Tensor) -> List[Tensor]:
         outputs = []
-        for b in self.n_branches:
+        for b in self.branches:
             outputs.append(b(x))
         return outputs
 
