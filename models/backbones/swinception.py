@@ -1,5 +1,5 @@
 from math import ceil
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, List
 
 import numpy as np
 import torch
@@ -100,7 +100,7 @@ class InceptionPool(nn.Module):
 class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
 
-    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, n_branches=2, drop=0.):
+    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, n_branches=4, drop=0.):
         super().__init__()
         self.out_features = out_features or in_features
         self.hidden_features = hidden_features or in_features
@@ -108,7 +108,7 @@ class InceptionHead(nn.Module):
         self.input_resolution = input_resolution
 
         inception_blocks = [Inception1x1, Inception3x3, Inception5x5, InceptionPool]
-        block_weights = np.array([3, 1, 1, 1])[0:n_branches]
+        block_weights = np.array([1, 1, 1, 1])[0:n_branches]
         norm_block_weights = (1 / sum(block_weights)) * block_weights
         self.branch_dims = [int(hidden_features * norm_block_weights[b]) for b in range(n_branches)]
         assert sum(self.branch_dims) == hidden_features
