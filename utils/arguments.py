@@ -51,6 +51,8 @@ def add_model_config_args(parser):
                        help='Depth each internal layer')
     group.add_argument('--num_heads', nargs='*', default=[3, 6, 12, 24], type=int,
                        help='Number of transformer heads in each layer.')
+    group.add_argument('--mlp_ratio', default=4.0, type=float,
+                        help='Hidden dimension scale for feedforward layers')
 
     group.add_argument('--rel_pos_bias', action='store_true',
                         help='Use relative position bias in the encoder')
