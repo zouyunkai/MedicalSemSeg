@@ -179,6 +179,7 @@ def build_model(cfg):
             num_heads=cfg.num_heads,
             window_size=cfg.window_size,
             qkv_bias=cfg.qkv_bias,
+            mlp_ratio=cfg.mlp_ratio,
             use_learned_cls_vectors=cfg.learned_cls_vectors,
             lcv_transform=transform,
             lcv_vector_dim=cfg.lcv_vector_dim,
