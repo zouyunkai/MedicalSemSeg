@@ -43,30 +43,33 @@ class Mlp(nn.Module):
         return x
 
 class BasicConv3d(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, **kwargs: Any) -> None:
+    def __init__(self, in_channels: int, out_channels: int, act_fn=nn.GELU, **kwargs: Any) -> None:
         super().__init__()
-        self.conv = nn.Conv3d(in_channels, out_channels, bias=False, **kwargs)
+        self.conv = nn.Conv3d(in_channels, out_channels, bias=True, **kwargs)
         self.bn = nn.BatchNorm3d(out_channels, eps=0.001)
+        self.act = act_fn()
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.conv(x)
         x = self.bn(x)
-        return F.relu(x, inplace=True)
+        x = self.act(x)
+        return x
 
 class Inception1x1(nn.Module):
     def __init__(self, in_features, out_features, **kwargs: Any) -> None:
         super().__init__()
-        self.branch1x1 = BasicConv3d(in_features, out_features, kernel_size=1)
+        self.branch1x1 = BasicConv3d(in_features, out_features, kernel_size=1, **kwargs)
 
     def forward(self, x: Tensor) -> Tensor:
         branch1x1 = self.branch1x1(x)
         return branch1x1
 
 class Inception3x3(nn.Module):
-    def __init__(self, in_features, out_features, **kwargs: Any) -> None:
+    def __init__(self, in_features, out_features, bottleneck_divisor=8, **kwargs: Any) -> None:
         super().__init__()
-        self.branch3x3_1 = BasicConv3d(in_features, out_features, kernel_size=1)
-        self.branch3x3_2 = BasicConv3d(out_features, out_features, kernel_size=3, padding=1)
+        bn_dim = in_features // bottleneck_divisor
+        self.branch3x3_1 = BasicConv3d(in_features, bn_dim, kernel_size=1, **kwargs)
+        self.branch3x3_2 = BasicConv3d(bn_dim, out_features, kernel_size=3, padding=1, **kwargs)
 
     def forward(self, x: Tensor) -> Tensor:
         branch3x3 = self.branch3x3_1(x)
@@ -74,11 +77,12 @@ class Inception3x3(nn.Module):
         return branch3x3
 
 class Inception5x5(nn.Module):
-    def __init__(self, in_features, out_features, **kwargs: Any) -> None:
+    def __init__(self, in_features, out_features, bottleneck_divisor=8, **kwargs: Any) -> None:
         super().__init__()
-        self.branch3x3dbl_1 = BasicConv3d(in_features, out_features, kernel_size=1)
-        self.branch3x3dbl_2 = BasicConv3d(out_features, out_features, kernel_size=3, padding=1)
-        self.branch3x3dbl_3 = BasicConv3d(out_features, out_features, kernel_size=3, padding=1)
+        bn_dim = in_features // bottleneck_divisor
+        self.branch3x3dbl_1 = BasicConv3d(in_features, bn_dim, kernel_size=1, **kwargs)
+        self.branch3x3dbl_2 = BasicConv3d(bn_dim, bn_dim, kernel_size=3, padding=1, **kwargs)
+        self.branch3x3dbl_3 = BasicConv3d(bn_dim, out_features, kernel_size=3, padding=1, **kwargs)
 
     def forward(self, x: Tensor) -> Tensor:
         branch3x3dbl = self.branch3x3dbl_1(x)
@@ -89,8 +93,8 @@ class Inception5x5(nn.Module):
 class InceptionPool(nn.Module):
     def __init__(self, in_features, out_features, **kwargs: Any) -> None:
         super().__init__()
-        self.branch_pool_1 = nn.MaxPool3d(kernel_size=3, stride=1, padding=1)
-        self.branch_pool_2 = BasicConv3d(in_features, out_features, kernel_size=1)
+        self.branch_pool_1 = nn.AvgPool3d(kernel_size=3, stride=1, padding=1, **kwargs)
+        self.branch_pool_2 = BasicConv3d(in_features, out_features, kernel_size=1, **kwargs)
 
     def forward(self, x: Tensor) -> Tensor:
         branch_pool = self.branch_pool_1(x)
@@ -100,18 +104,22 @@ class InceptionPool(nn.Module):
 class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
 
-    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, n_branches=2, drop=0.):
+    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, n_branches=2, drop=0.,
+                 branch_weights=[1, 1, 1, 1]):
         super().__init__()
         self.out_features = out_features or in_features
-        self.hidden_features = hidden_features or in_features
-        self.n_branches = n_branches
         self.input_resolution = input_resolution
 
+        n_branches = len(branch_weights)
+        hf = hidden_features or in_features
+
         inception_blocks = [Inception1x1, Inception3x3, Inception5x5, InceptionPool]
-        block_weights = np.array([3, 1, 1, 1])[0:n_branches]
+
+        block_weights = np.array(branch_weights)
         norm_block_weights = (1 / sum(block_weights)) * block_weights
-        self.branch_dims = [int(hidden_features * norm_block_weights[b]) for b in range(n_branches)]
-        assert sum(self.branch_dims) == hidden_features
+        self.branch_dims = [int(hf * norm_block_weights[b]) for b in range(n_branches)]
+
+        self.hidden_features = sum(self.branch_dims)
 
         self.branches = nn.ModuleList()
         for b in range(n_branches):
@@ -130,16 +138,14 @@ class InceptionHead(nn.Module):
         # Reshape input into 3D volume
         B, L, C = x.shape
         S, H, W = self.input_resolution
-        x = x.view(B, S, H, W, C)
-        x = x.permute(0, 4, 1, 2, 3) # (B, C, S, H, W)
+        x = x.permute(0, 2, 1).reshape(B, C, S, H, W).contiguous()
 
         # Apply inception layers
         x = self._forward(x)
         x = torch.cat(x, 1)
 
         # Reshape back into Transformer tokens
-        x = x.permute(0, 2, 3, 4, 1)
-        x = x.view(B, S * H * W, self.hidden_features) # (B, L, hidden_features)
+        x = x.reshape(B, self.hidden_features, S * H * W).permute(0, 2, 1).contiguous()
 
         # Apply final linear layer
         x = self.fc(x)
