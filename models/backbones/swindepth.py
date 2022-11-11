@@ -32,11 +32,11 @@ class Mlp(nn.Module):
         self.input_resolution = input_resolution
 
         self.fc1 = nn.Linear(in_features, self.hidden_features)
-        self.dwc1 = nn.Conv2d(self.hidden_features, self.hidden_features, kernel_size=3, padding=1,
+        self.dwc1 = nn.Conv3d(self.hidden_features, self.hidden_features, kernel_size=3, padding=1,
                               groups=self.hidden_features)
-        self.dwc2 = nn.Conv2d(self.hidden_features, self.hidden_features, kernel_size=3, padding=1,
+        self.dwc2 = nn.Conv3d(self.hidden_features, self.hidden_features, kernel_size=3, padding=1,
                               groups=self.hidden_features)
-        self.bn = nn.BatchNorm2d(self.hidden_features, eps=0.001)
+        self.bn = nn.BatchNorm3d(self.hidden_features, eps=0.001)
         self.act = act_layer()
         self.fc2 = nn.Linear(self.hidden_features, self.out_features)
         self.drop = nn.Dropout(drop)
@@ -45,7 +45,7 @@ class Mlp(nn.Module):
         x = self.fc1(x)
         x = self.act(x)
 
-        # Reshape input into 2D volume
+        # Reshape input into 3D volume
         B, L, C = x.shape
         S, H, W = self.input_resolution
         x = x.permute(0, 2, 1).reshape(B, self.hidden_features, S, H, W).contiguous()
