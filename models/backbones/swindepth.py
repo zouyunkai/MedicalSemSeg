@@ -54,16 +54,14 @@ class Mlp(nn.Module):
         x = self.bn(x)
         x = self.act(x)
         x = self.dwc2(x)
-        x = self.bn(x)
+        x = self.act(x)
         # Reshape back into Transformer tokens
         x = x.reshape(B, self.hidden_features, S * H * W).permute(0, 2, 1).contiguous()
 
         # Apply final linear layer
-        x = self.act(x)
         x = self.drop(x)
         x = self.fc2(x)
         x = self.drop(x)
-
         return x
 
 
