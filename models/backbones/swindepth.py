@@ -36,7 +36,8 @@ class Mlp(nn.Module):
                               groups=self.hidden_features)
         self.dwc2 = nn.Conv3d(self.hidden_features, self.hidden_features, kernel_size=3, padding=1,
                               groups=self.hidden_features)
-        self.bn = nn.BatchNorm3d(self.hidden_features, eps=0.001)
+        self.bn1 = nn.BatchNorm3d(self.hidden_features, eps=0.001)
+        self.bn2 = nn.BatchNorm3d(self.hidden_features, eps=0.001)
         self.act = act_layer()
         self.fc2 = nn.Linear(self.hidden_features, self.out_features)
         self.drop = nn.Dropout(drop)
@@ -51,9 +52,10 @@ class Mlp(nn.Module):
         x = x.permute(0, 2, 1).reshape(B, self.hidden_features, S, H, W).contiguous()
         # Apply inception layers
         x = self.dwc1(x)
-        x = self.bn(x)
+        x = self.bn1(x)
         x = self.act(x)
         x = self.dwc2(x)
+        x = self.bn2(x)
         x = self.act(x)
         # Reshape back into Transformer tokens
         x = x.reshape(B, self.hidden_features, S * H * W).permute(0, 2, 1).contiguous()
