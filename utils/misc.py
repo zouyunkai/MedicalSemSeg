@@ -449,3 +449,6 @@ def cleanup_checkpoints(checkpoint_files):
             print("Could not remove file {} because of error {}".format(checkpoint_files[i], ose))
         except Exception as e:
             print("Could not remove file because of error {}".format(e))
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

@@ -104,7 +104,7 @@ class InceptionPool(nn.Module):
 class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
 
-    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, n_branches=2, drop=0.,
+    def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, drop=0.,
                  branch_weights=[1, 1, 1, 1]):
         super().__init__()
         self.out_features = out_features or in_features

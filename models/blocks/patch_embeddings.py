@@ -133,9 +133,11 @@ class PatchEmbed3D(nn.Module):
         return x
 
 class PatchEmbedDeep(nn.Module):
-    def __init__(self, vol_size=(96, 96, 96), patch_size=(2, 2, 2), in_chans=1, embed_dim=48, spatial_dims=3, norm_name="instance", norm_layer=None):
+    def __init__(self, vol_size=(96, 96, 96), patch_size=(2, 2, 2), in_chans=1, embed_dim=48, spatial_dims=3, norm_name="batch", norm_layer=None):
         super().__init__()
 
+        vol_size = ensure_tuple_rep(vol_size, 3)
+        patch_size = ensure_tuple_rep(patch_size, 3)
         patches_resolution = [vol_size[0] // patch_size[0], vol_size[1] // patch_size[1], vol_size[2] // patch_size[2]]
         self.vol_size = vol_size
         self.patch_size = patch_size
@@ -152,7 +154,7 @@ class PatchEmbedDeep(nn.Module):
             kernel_size=3,
             stride=1,
             norm_name=norm_name,
-            res_block=True,
+            res_block=False,
         )
         self.block2 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
@@ -161,7 +163,7 @@ class PatchEmbedDeep(nn.Module):
             kernel_size=3,
             stride=1,
             norm_name=norm_name,
-            res_block=True,
+            res_block=False,
         )
 
         self.proj = nn.Conv3d(embed_dim // 2, embed_dim, kernel_size=patch_size, stride=patch_size)
@@ -196,19 +198,18 @@ class PatchEmbedDeep(nn.Module):
 
         return x
 
-class PatchEmbedLarge(nn.Module):
 
-    def __init__(self, in_chans=1, embed_dim=48, norm_layer=None):
+class PatchEmbedGlobal(nn.Module):
+
+    def __init__(self, vol_size=(96, 96, 96), in_chans=1, embed_dim=48, norm_layer=None):
         super().__init__()
 
         self.in_chans = in_chans
         self.embed_dim = embed_dim
-        self.pool = nn.MaxPool3d(2)
-        self.conv1 = convLarge(in_chans, embed_dim // 16, nn.GELU, nn.LayerNorm, False)
-        self.conv2 = convLarge(embed_dim // 16, embed_dim // 8, nn.GELU, nn.LayerNorm, False)
-        self.conv3 = convLarge(embed_dim // 8, embed_dim // 4, nn.GELU, nn.LayerNorm, False)
-        self.conv4 = convLarge(embed_dim // 4, embed_dim // 2, nn.GELU, nn.LayerNorm, False)
-        self.conv5 = convLarge(embed_dim // 2, embed_dim, nn.GELU, nn.LayerNorm, True)
+        ksize = (vol_size[0] // 4, vol_size[1] // 4, vol_size[2] // 4)
+        self.down1 = nn.Conv3d(in_chans, self.in_chans * 2, kernel_size=2, stride=2)
+        self.down2 = nn.Conv3d(self.in_chans * 2, self.in_chans * 4, kernel_size=2, stride=2)
+        self.proj = nn.Conv3d(self.in_chans * 4, embed_dim, kernel_size=ksize, stride=ksize)
         if norm_layer is not None:
             self.norm = norm_layer(embed_dim)
         else:
@@ -216,13 +217,9 @@ class PatchEmbedLarge(nn.Module):
 
     def forward(self, x):
         """Forward function."""
-        x = self.pool(x)
-        x = self.conv1(x)  # B C Ws Wh Ww
-        x = self.conv2(x)  # B C Ws Wh Ww
-        x = self.pool(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
+        x = self.down1(x)
+        x = self.down2(x)
+        x = self.proj(x)
 
         if self.norm is not None:
             Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
@@ -233,33 +230,30 @@ class PatchEmbedLarge(nn.Module):
         return x
 
 
-class convLarge(nn.Module):
-    def __init__(self, in_dim, out_dim, activate, norm, last=False):
+class PatchEmbedRegion(nn.Module):
+
+    def __init__(self, region_size=(32, 32, 32), in_chans=1, embed_dim=48, norm_layer=None):
         super().__init__()
-        self.out_dim = out_dim
-        self.conv1 = nn.Conv3d(in_dim, out_dim, kernel_size=5, stride=1, padding=0)
-        self.conv2 = nn.Conv3d(out_dim, out_dim, kernel_size=5, stride=1, padding=0)
-        self.activate = activate()
-        self.norm1 = norm(out_dim)
-        self.last = last
-        if not last:
-            self.norm2 = norm(out_dim)
+
+        self.in_chans = in_chans
+        self.embed_dim = embed_dim
+        ksize = (region_size[0] // 2, region_size[1] // 2, region_size[2] // 2)
+        self.down = nn.Conv3d(in_chans, self.in_chans * 2, kernel_size=2, stride=2)
+        self.proj = nn.Conv3d(self.in_chans * 2, embed_dim, kernel_size=ksize, stride=ksize)
+        if norm_layer is not None:
+            self.norm = norm_layer(embed_dim)
+        else:
+            self.norm = None
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.activate(x)
-        # norm1
-        Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
-        x = x.flatten(2).transpose(1, 2).contiguous()
-        x = self.norm1(x)
-        x = x.transpose(1, 2).contiguous().view(-1, self.out_dim, Ws, Wh, Ww)
+        """Forward function."""
+        x = self.down(x)
+        x = self.proj(x)
 
-        x = self.conv2(x)
-        if not self.last:
-            x = self.activate(x)
-            # norm2
+        if self.norm is not None:
             Ws, Wh, Ww = x.size(2), x.size(3), x.size(4)
             x = x.flatten(2).transpose(1, 2).contiguous()
-            x = self.norm2(x)
-            x = x.transpose(1, 2).contiguous().view(-1, self.out_dim, Ws, Wh, Ww)
+            x = self.norm(x)
+            x = x.transpose(1, 2).contiguous().view(-1, self.embed_dim, Ws, Wh, Ww)
+
         return x

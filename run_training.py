@@ -84,6 +84,10 @@ def main(cfg):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[cfg.gpu], find_unused_parameters=True)
         model_without_ddp = model.module
 
+    n_parameters = misc.count_parameters(model_without_ddp)
+    if misc.get_rank() == 0 and cfg.neptune_logging:
+        neptune_logger['parameters/n_parameters'] = n_parameters
+
     # following timm: set wd as 0 for bias and norm layers
     param_groups = optim_factory.add_weight_decay(model_without_ddp, cfg.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=cfg.lr, betas=(0.9, 0.95), eps=1e-6)

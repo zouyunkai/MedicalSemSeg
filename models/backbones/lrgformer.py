@@ -78,7 +78,7 @@ class LRGAttention(nn.Module):
 
         attn = (q @ k.transpose(-2, -1))
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, -1)
+        x = (attn @ v).transpose(1, 2).reshape(B, (N_local + N_region + 1), -1)
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -214,16 +214,15 @@ class LRGFormer(nn.Module):
         self.patch_norm = patch_norm
         self.out_indices = out_indices
 
-        self.patch_embed_local = PatchEmbedLocal(
-            vol_size=self.vol_size,
-            local_size=self.local_size,
+        self.patch_embed_local = PatchEmbed3D(
+            vol_size=self.local_size,
+            patch_size=(1, 1, 1),
             in_chans=in_chans,
             embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None)
 
-        self.patch_embed_region = PatchEmbed3D(
-            vol_size=self.vol_size,
-            patch_size=self.local_size,
+        self.patch_embed_region = PatchEmbedRegion(
+            region_size=self.region_size,
             in_chans=in_chans,
             embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None)
