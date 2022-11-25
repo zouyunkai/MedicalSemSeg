@@ -90,6 +90,24 @@ class Inception5x5(nn.Module):
         branch3x3dbl = self.branch3x3dbl_3(branch3x3dbl)
         return branch3x3dbl
 
+
+class Inception7x7(nn.Module):
+    def __init__(self, in_features, out_features, bottleneck_divisor=8, **kwargs: Any) -> None:
+        super().__init__()
+        bn_dim = in_features // bottleneck_divisor
+        self.branch3x3trpl_1 = BasicConv3d(in_features, bn_dim, kernel_size=1, **kwargs)
+        self.branch3x3trpl_2 = BasicConv3d(bn_dim, bn_dim, kernel_size=3, padding=1, **kwargs)
+        self.branch3x3trpl_3 = BasicConv3d(bn_dim, bn_dim, kernel_size=3, padding=1, **kwargs)
+        self.branch3x3trpl_4 = BasicConv3d(bn_dim, out_features, kernel_size=3, padding=1, **kwargs)
+
+    def forward(self, x: Tensor) -> Tensor:
+        branch3x3dbl = self.branch3x3trpl_1(x)
+        branch3x3dbl = self.branch3x3trpl_2(branch3x3dbl)
+        branch3x3dbl = self.branch3x3trpl_3(branch3x3dbl)
+        branch3x3dbl = self.branch3x3trpl_4(branch3x3dbl)
+        return branch3x3dbl
+
+
 class InceptionPool(nn.Module):
     def __init__(self, in_features, out_features, **kwargs: Any) -> None:
         super().__init__()
@@ -101,11 +119,12 @@ class InceptionPool(nn.Module):
         branch_pool = self.branch_pool_2(branch_pool)
         return branch_pool
 
+
 class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
 
     def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, drop=0.,
-                 branch_weights=[1, 1, 1, 1]):
+                 branch_weights=[1, 1, 1]):
         super().__init__()
         self.out_features = out_features or in_features
         self.input_resolution = input_resolution
@@ -113,7 +132,7 @@ class InceptionHead(nn.Module):
         n_branches = len(branch_weights)
         hf = hidden_features or in_features
 
-        inception_blocks = [Inception1x1, Inception3x3, Inception5x5, InceptionPool]
+        inception_blocks = [Inception1x1, Inception3x3, Inception5x5]
 
         block_weights = np.array(branch_weights)
         norm_block_weights = (1 / sum(block_weights)) * block_weights
