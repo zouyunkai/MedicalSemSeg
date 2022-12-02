@@ -132,7 +132,7 @@ class InceptionHead(nn.Module):
         n_branches = len(branch_weights)
         hf = hidden_features or in_features
 
-        inception_blocks = [Inception1x1, Inception3x3, Inception5x5]
+        inception_blocks = [Inception1x1, Inception3x3, Inception5x5, Inception7x7, InceptionPool]
 
         block_weights = np.array(branch_weights)
         norm_block_weights = (1 / sum(block_weights)) * block_weights
