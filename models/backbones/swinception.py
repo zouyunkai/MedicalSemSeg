@@ -124,7 +124,7 @@ class InceptionHead(nn.Module):
     '''Inception head used for Swinception'''
 
     def __init__(self, in_features, input_resolution, hidden_features=None, out_features=None, drop=0.,
-                 branch_weights=[1, 1, 1]):
+                 branch_weights=[1, 1, 1, 1, 1]):
         super().__init__()
         self.out_features = out_features or in_features
         self.input_resolution = input_resolution
@@ -133,6 +133,7 @@ class InceptionHead(nn.Module):
         hf = hidden_features or in_features
 
         inception_blocks = [Inception1x1, Inception3x3, Inception5x5, Inception7x7, InceptionPool]
+        assert len(inception_blocks) == len(branch_weights)
 
         block_weights = np.array(branch_weights)
         norm_block_weights = (1 / sum(block_weights)) * block_weights
