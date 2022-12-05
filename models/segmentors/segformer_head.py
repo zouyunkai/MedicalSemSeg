@@ -45,17 +45,17 @@ class SegFormerHead(nn.Module):
         self.encoder = encoder
         self.input_resolution = encoder.patch_embed.vol_size
 
-        self.in_channels = [in_channels * 2**i for i in range(0, 5)]
-        c0_in_channels, c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
+        self.in_channels = [in_channels * 2**i for i in range(1, 5)]
+        c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
 
         self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=embedding_dim)
         self.linear_c3 = MLP(input_dim=c3_in_channels, embed_dim=embedding_dim)
         self.linear_c2 = MLP(input_dim=c2_in_channels, embed_dim=embedding_dim)
         self.linear_c1 = MLP(input_dim=c1_in_channels, embed_dim=embedding_dim)
-        self.linear_c0 = MLP(input_dim=c0_in_channels, embed_dim=embedding_dim)
+        #self.linear_c0 = MLP(input_dim=c0_in_channels, embed_dim=embedding_dim)
 
         self.linear_fuse = BasicConv3d(
-            in_channels=embedding_dim*5,
+            in_channels=embedding_dim*4,
             out_channels=embedding_dim,
             kernel_size=1
         )
@@ -66,29 +66,30 @@ class SegFormerHead(nn.Module):
 
     def forward(self, inputs):
         x = self.encoder(inputs)
-        c0, c1, c2, c3, c4 = x
+        _, c1, c2, c3, c4 = x
         ############## MLP decoder on C1-C4 ###########
         n, _, h, w, d = c4.shape
 
         _c4 = self.linear_c4(c4).permute(0,2,1).reshape(n, -1, c4.shape[2], c4.shape[3], c4.shape[4])
-        _c4 = nn.functional.interpolate(_c4, size=c0.size()[2:],mode='trilinear',align_corners=False)
+        _c4 = nn.functional.interpolate(_c4, size=c1.size()[2:],mode='trilinear', align_corners=False)
 
         _c3 = self.linear_c3(c3).permute(0,2,1).reshape(n, -1, c3.shape[2], c3.shape[3], c3.shape[4])
-        _c3 = nn.functional.interpolate(_c3, size=c0.size()[2:],mode='trilinear',align_corners=False)
+        _c3 = nn.functional.interpolate(_c3, size=c1.size()[2:],mode='trilinear', align_corners=False)
 
         _c2 = self.linear_c2(c2).permute(0,2,1).reshape(n, -1, c2.shape[2], c2.shape[3], c2.shape[4])
-        _c2 = nn.functional.interpolate(_c2, size=c0.size()[2:],mode='trilinear',align_corners=False)
+        _c2 = nn.functional.interpolate(_c2, size=c1.size()[2:],mode='trilinear', align_corners=False)
 
         _c1 = self.linear_c1(c1).permute(0,2,1).reshape(n, -1, c1.shape[2], c1.shape[3], c1.shape[4])
-        _c1 = nn.functional.interpolate(_c1, size=c0.size()[2:], mode='trilinear', align_corners=False)
+        #_c1 = nn.functional.interpolate(_c1, size=c0.size()[2:], mode='trilinear', align_corners=False)
 
-        _c0 = self.linear_c0(c0).permute(0, 2, 1).reshape(n, -1, c0.shape[2], c0.shape[3], c0.shape[4])
+        #_c0 = self.linear_c0(c0).permute(0, 2, 1).reshape(n, -1, c0.shape[2], c0.shape[3], c0.shape[4])
 
-        _c = self.linear_fuse(torch.cat([_c4, _c3, _c2, _c1, _c0], dim=1))
+        _c = self.linear_fuse(torch.cat([_c4, _c3, _c2, _c1], dim=1))
 
         x = self.dropout(_c)
-        x = self.linear_pred(x)
 
         x = nn.functional.interpolate(x, size=self.input_resolution, mode='trilinear', align_corners=False)
+
+        x = self.linear_pred(x)
 
         return x
