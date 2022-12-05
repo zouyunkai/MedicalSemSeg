@@ -13,95 +13,11 @@ from models.segmentors.swin_unetr import SwinUNETRCustom
 from models.segmentors.swin_unetr_official import SwinUNETR
 from models.segmentors.unetr import UNETRC
 from models.segmentors.unetr_official import UNETROC
+from models.segmentors.segformer_head import SegFormerHead
 
 
 def build_model(cfg):
-    if cfg.model == 'UNETR_Custom':
-
-        encoder = ViTMAE(
-                        vol_size=cfg.vol_size,
-                        patch_size=cfg.patch_size,
-                        in_chans=cfg.in_chans,
-                        input_dim=cfg.input_dim,
-                        qkv_bias=cfg.qkv_bias,
-                        use_abs_pos_emb=cfg.abs_pos_emb,
-                        use_rel_pos_bias=cfg.rel_pos_bias#,
-                        #out_indices=[3, 7, 11]
-                         )
-        encoder.init_weights(cfg.pretrained)
-        model = UNETRC(encoder, in_chans=cfg.in_chans, output_dim=cfg.output_dim)
-    elif cfg.model == 'UNETR_Official':
-        model = UNETR(
-            in_channels=cfg.in_chans,
-            out_channels=cfg.output_dim,
-            img_size=cfg.vol_size,
-            feature_size=16,
-            hidden_size=cfg.hidden_dim,
-            mlp_dim=3072,
-            num_heads=12,
-            pos_embed="perceptron",
-            norm_name="instance",
-            res_block=True,
-            dropout_rate=0.0,
-        )
-    elif cfg.model == 'UNETR_OfficialCustom':
-        encoder = ViTMAE(
-                        vol_size=cfg.vol_size,
-                        patch_size=cfg.patch_size,
-                        in_chans=cfg.in_chans,
-                        input_dim=cfg.input_dim,
-                        qkv_bias=cfg.qkv_bias,
-                        use_abs_pos_emb=cfg.abs_pos_emb,
-                        use_rel_pos_bias=cfg.rel_pos_bias#,
-                        #out_indices=[3, 7, 11]
-                         )
-        encoder.init_weights(cfg.pretrained)
-        model = UNETROC(
-            encoder,
-            in_channels=cfg.in_chans,
-            out_channels=cfg.output_dim,
-            img_size=cfg.vol_size,
-            feature_size=16,
-            hidden_size=cfg.hidden_dim,
-            num_heads=12,
-            norm_name="instance",
-            res_block=True,
-            dropout_rate=0.0,
-        )
-    elif cfg.model == 'OfficialSwinUNETR':
-        model = SwinUNETR(
-            img_size=cfg.vol_size,
-            in_channels=cfg.in_chans,
-            out_channels=cfg.output_dim,
-            depths=(2, 2, 2, 2),
-            num_heads=(3, 6, 12, 24),
-            feature_size=cfg.hidden_dim,
-            norm_name="instance",
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            dropout_path_rate=0.0,
-            use_checkpoint=False,
-        )
-    elif cfg.model == 'SwinUNETR':
-        encoder = SwinTransformer3D(
-            vol_size=cfg.vol_size,
-            patch_size=cfg.patch_size,
-            in_chans=cfg.in_chans,
-            embed_dim=cfg.hidden_dim,
-            depths=[2, 2, 2, 2],
-            num_heads=[3, 6, 12, 24],
-            window_size=cfg.window_size,
-            qkv_bias=cfg.qkv_bias
-        )
-        model = SwinUNETRCustom(
-            encoder,
-            in_channels=cfg.in_chans,
-            out_channels=cfg.output_dim,
-            img_size=cfg.vol_size,
-            hidden_size=cfg.hidden_dim,
-            patch_size=cfg.patch_size,
-        )
-    elif cfg.model == 'nnFormerUNETR':
+    if cfg.model == 'nnFormerUNETR':
         if cfg.t_fixed_ct_intensity:
             transform = monai.transforms.ScaleIntensityRange(
                     a_min=cfg.t_ct_min,
@@ -259,15 +175,22 @@ def build_model(cfg):
             hidden_size=cfg.hidden_dim,
             patch_size=cfg.patch_size,
         )
-    elif cfg.model == 'nnFormer':
-        model = nnFormer(
-            crop_size=cfg.vol_size,
-            embedding_dim=cfg.hidden_dim,
-            input_channels=cfg.in_chans,
-            num_classes=cfg.output_dim,
-            deep_supervision=False,
+    elif cfg.model == 'SwinSegFormer':
+        encoder = SwinTransformerNNFormer(
+            pretrain_img_size=cfg.vol_size,
+            patch_size=cfg.patch_size,
+            in_chans=cfg.in_chans,
+            embed_dim=cfg.hidden_dim,
+            depths=cfg.depths,
+            num_heads=cfg.num_heads,
             window_size=cfg.window_size,
-            patch_size=cfg.patch_size
+            qkv_bias=cfg.qkv_bias,
+            use_abs_pos_emb=cfg.abs_pos_emb
+        )
+        model = SegFormerHead(
+            encoder=encoder,
+            in_channels=cfg.hidden_dim,
+            num_classes=cfg.output_dim
         )
     elif cfg.model == 'GCViTUNETR':
         encoder = GCViT(

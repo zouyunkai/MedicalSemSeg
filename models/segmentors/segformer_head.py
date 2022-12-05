@@ -46,17 +46,13 @@ class SegFormerHead(BaseDecodeHead):
     """
     SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers
     """
-    def __init__(self, encoder, feature_strides, **kwargs):
-        super(SegFormerHead, self).__init__(input_transform='multiple_select', **kwargs)
-        assert len(feature_strides) == len(self.in_channels)
-        assert min(feature_strides) == feature_strides[0]
-        self.feature_strides = feature_strides
+    def __init__(self, encoder, in_channels, num_classes, dropout_ratio=0.1, embedding_dim=768, **kwargs):
+        super(self).__init__(**kwargs)
+        self.num_classes = num_classes
         self.encoder = encoder
 
+        self.in_channels = [in_channels * 2**i for i in range(0, 4)]
         c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
-
-        decoder_params = kwargs['decoder_params']
-        embedding_dim = decoder_params['embed_dim']
 
         self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=embedding_dim)
         self.linear_c3 = MLP(input_dim=c3_in_channels, embed_dim=embedding_dim)
@@ -69,11 +65,13 @@ class SegFormerHead(BaseDecodeHead):
             kernel_size=1
         )
 
+        self.dropout = nn.Dropout3d(dropout_ratio)
+
         self.linear_pred = nn.Conv3d(embedding_dim, self.num_classes, kernel_size=1)
 
     def forward(self, inputs):
         x = self.encoder(inputs)
-        c1, c2, c3, c4 = x
+        _, c1, c2, c3, c4 = x
 
         ############## MLP decoder on C1-C4 ###########
         n, _, h, w, d = c4.shape
@@ -93,5 +91,7 @@ class SegFormerHead(BaseDecodeHead):
 
         x = self.dropout(_c)
         x = self.linear_pred(x)
+
+        x = nn.functional.interpolate(x, size=self.encoder.input_resolution, mode='bilinear', align_corners=False)
 
         return x
