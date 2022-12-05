@@ -40,7 +40,7 @@ class SegFormerHead(nn.Module):
     SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers
     """
     def __init__(self, encoder, in_channels, num_classes, dropout_ratio=0.1, embedding_dim=768, **kwargs):
-        super(self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.num_classes = num_classes
         self.encoder = encoder
 
