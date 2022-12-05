@@ -64,8 +64,9 @@ class SegFormerHead(nn.Module):
 
     def forward(self, inputs):
         x = self.encoder(inputs)
+        for i, k in enumerate(x):
+            print("Shape of input {} in x: {}".format(i, k.shape))
         _, c1, c2, c3, c4 = x
-
         ############## MLP decoder on C1-C4 ###########
         n, _, h, w, d = c4.shape
 
