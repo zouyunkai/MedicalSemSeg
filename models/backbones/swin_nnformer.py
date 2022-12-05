@@ -493,7 +493,7 @@ class SwinTransformerNNFormer(nn.Module):
                  drop_path_rate=0.2,
                  norm_layer=nn.LayerNorm,
                  patch_norm=True,
-                 use_learned_cls_vectors=True,
+                 use_learned_cls_vectors=False,
                  lcv_transform=None,
                  lcv_vector_dim=6,
                  lcv_sincos_emb=False,
