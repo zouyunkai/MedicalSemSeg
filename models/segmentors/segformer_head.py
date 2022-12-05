@@ -44,6 +44,7 @@ class SegFormerHead(nn.Module):
         self.num_classes = num_classes
         self.encoder = encoder
         self.input_resolution = encoder.patch_embed.vol_size
+        self.patch_resolution = encoder.patch_embed.patches_resolution
 
         self.in_channels = [in_channels * 2**i for i in range(1, 5)]
         c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
@@ -88,8 +89,10 @@ class SegFormerHead(nn.Module):
 
         x = self.dropout(_c)
 
-        x = nn.functional.interpolate(x, size=self.input_resolution, mode='trilinear', align_corners=False)
+        x = nn.functional.interpolate(x, size=self.patch_resolution, mode='trilinear', align_corners=False)
 
         x = self.linear_pred(x)
+
+        x = nn.functional.interpolate(x, size=self.input_resolution, mode='trilinear', align_corners=False)
 
         return x
