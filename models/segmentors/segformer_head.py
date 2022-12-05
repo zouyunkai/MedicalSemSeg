@@ -44,7 +44,7 @@ class SegFormerHead(nn.Module):
         self.num_classes = num_classes
         self.encoder = encoder
 
-        self.in_channels = [in_channels * 2**i for i in range(0, 4)]
+        self.in_channels = [in_channels * 2**i for i in range(1, 5)]
         c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
 
         self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=embedding_dim)
@@ -64,8 +64,6 @@ class SegFormerHead(nn.Module):
 
     def forward(self, inputs):
         x = self.encoder(inputs)
-        for i, k in enumerate(x):
-            print("Shape of input {} in x: {}".format(i, k.shape))
         _, c1, c2, c3, c4 = x
         ############## MLP decoder on C1-C4 ###########
         n, _, h, w, d = c4.shape
