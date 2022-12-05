@@ -3,14 +3,8 @@
 #
 # This work is licensed under the NVIDIA Source Code License
 # ---------------------------------------------------------------
-import numpy as np
 import torch.nn as nn
 import torch
-
-from ..builder import HEADS
-from .decode_head import BaseDecodeHead
-from mmseg.models.utils import *
-import attr
 
 
 class MLP(nn.Module):
@@ -41,8 +35,7 @@ class BasicConv3d(nn.Module):
         return x
 
 
-@HEADS.register_module()
-class SegFormerHead(BaseDecodeHead):
+class SegFormerHead(nn.Module):
     """
     SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers
     """
