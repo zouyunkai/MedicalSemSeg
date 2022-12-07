@@ -184,7 +184,7 @@ def build_model(cfg):
         )
         model = SegFormerHead(
             encoder=encoder,
-            in_channels=cfg.hidden_dim,
+            in_channels=[cfg.hidden_dim * 2**i for i in range(0, len(cfg.depths)+1)],
             num_classes=cfg.output_dim
         )
     elif cfg.model == 'SegFormer3D':
@@ -200,7 +200,7 @@ def build_model(cfg):
         )
         model = SegFormerHeadOfficial(
             encoder=encoder,
-            in_channels=cfg.hidden_dim,
+            in_channels=[cfg.hidden_dim * 2**i for i in range(0, len(cfg.depths))],
             num_classes=cfg.output_dim
         )
     elif cfg.model == 'GCViTUNETR':

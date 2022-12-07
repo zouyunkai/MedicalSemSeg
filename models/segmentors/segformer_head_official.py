@@ -44,7 +44,7 @@ class SegFormerHeadOfficial(nn.Module):
         self.num_classes = num_classes
         self.encoder = encoder
 
-        self.in_channels = [in_channels * 2**i for i in range(1, 5)]
+        self.in_channels = in_channels
         c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
 
         self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=embedding_dim)
