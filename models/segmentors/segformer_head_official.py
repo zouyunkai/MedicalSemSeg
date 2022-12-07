@@ -43,8 +43,6 @@ class SegFormerHeadOfficial(nn.Module):
         super().__init__(**kwargs)
         self.num_classes = num_classes
         self.encoder = encoder
-        self.input_resolution = encoder.patch_embed.vol_size
-        self.patch_resolution = encoder.patch_embed.patches_resolution
 
         self.in_channels = [in_channels * 2**i for i in range(1, 5)]
         c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
@@ -65,6 +63,7 @@ class SegFormerHeadOfficial(nn.Module):
         self.linear_pred = nn.Conv3d(embedding_dim, self.num_classes, kernel_size=1)
 
     def forward(self, inputs):
+        org_shape = inputs.size()[2:]
         x = self.encoder(inputs)
         _, c1, c2, c3, c4 = x
         ############## MLP decoder on C1-C4 ###########
@@ -87,6 +86,6 @@ class SegFormerHeadOfficial(nn.Module):
 
         x = self.linear_pred(x)
 
-        x = nn.functional.interpolate(x, size=self.input_resolution, mode='trilinear', align_corners=False)
+        x = nn.functional.interpolate(x, size=org_shape, mode='trilinear', align_corners=False)
 
         return x

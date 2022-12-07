@@ -43,8 +43,6 @@ class SegFormerHead(nn.Module):
         super().__init__(**kwargs)
         self.num_classes = num_classes
         self.encoder = encoder
-        self.input_resolution = encoder.patch_embed.vol_size
-        self.patch_resolution = encoder.patch_embed.patches_resolution
 
         self.in_channels = [in_channels * 2**i for i in range(0, 5)]
         c0_in_channels, c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
@@ -85,6 +83,7 @@ class SegFormerHead(nn.Module):
         self.linear_pred = nn.Conv3d(embedding_dim, self.num_classes, kernel_size=1)
 
     def forward(self, inputs):
+        org_shape = inputs.size()[2:]
         x = self.encoder(inputs)
         c0, c1, c2, c3, c4 = x
         ############## MLP decoder on C1-C4 ###########
@@ -107,7 +106,7 @@ class SegFormerHead(nn.Module):
 
         _c0 = self.linear_c0(c0).permute(0, 2, 1).reshape(n, -1, c0.shape[2], c0.shape[3], c0.shape[4])
         _c = self.linear_fuse_0(torch.cat([_c1, _c0], dim=1))
-        _c = nn.functional.interpolate(_c, size=self.input_resolution, mode='trilinear', align_corners=False)
+        _c = nn.functional.interpolate(_c, size=org_shape, mode='trilinear', align_corners=False)
 
         #_c = self.linear_fuse(torch.cat([_c4, _c3, _c2, _c1], dim=1))
 
