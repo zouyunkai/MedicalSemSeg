@@ -306,7 +306,7 @@ class MixVisionTransformer(nn.Module):
         for i, blk in enumerate(self.block1):
             x = blk(x, H, W, D)
         x = self.norm1(x)
-        x = x.reshape(B, H, W, D, -1).permute(0, 3, 1, 2).contiguous()
+        x = x.reshape(B, H, W, D, -1).permute(0, 4, 1, 2, 3).contiguous()
         outs.append(x)
 
         # stage 2
@@ -314,7 +314,7 @@ class MixVisionTransformer(nn.Module):
         for i, blk in enumerate(self.block2):
             x = blk(x, H, W, D)
         x = self.norm2(x)
-        x = x.reshape(B, H, W, D, -1).permute(0, 3, 1, 2).contiguous()
+        x = x.reshape(B, H, W, D, -1).permute(0, 4, 1, 2, 3).contiguous()
         outs.append(x)
 
         # stage 3
@@ -322,7 +322,7 @@ class MixVisionTransformer(nn.Module):
         for i, blk in enumerate(self.block3):
             x = blk(x, H, W, D)
         x = self.norm3(x)
-        x = x.reshape(B, H, W, D, -1).permute(0, 3, 1, 2).contiguous()
+        x = x.reshape(B, H, W, D, -1).permute(0, 4, 1, 2, 3).contiguous()
         outs.append(x)
 
         # stage 4
@@ -330,7 +330,7 @@ class MixVisionTransformer(nn.Module):
         for i, blk in enumerate(self.block4):
             x = blk(x, H, W, D)
         x = self.norm4(x)
-        x = x.reshape(B, H, W, D, -1).permute(0, 3, 1, 2).contiguous()
+        x = x.reshape(B, H, W, D, -1).permute(0, 4, 1, 2, 3).contiguous()
         outs.append(x)
 
         return outs
