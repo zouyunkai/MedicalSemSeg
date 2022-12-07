@@ -1,19 +1,14 @@
 import monai
-from monai.networks.nets import UNETR
 
 from models.backbones.focalnet_3d import FocalNet
 from models.backbones.gc_vit_3d import GCViT
-from models.backbones.swin_3d import SwinTransformer3D
+from models.backbones.segformer_backbone import MixVisionTransformer
 from models.backbones.swin_nnformer import SwinTransformerNNFormer
 from models.backbones.swinception import SwInception
 from models.backbones.swindepth import SwinDepth
-from models.backbones.vit_mae import ViTMAE
-from models.segmentors.nnformer_official.nnformer_official import nnFormer
-from models.segmentors.swin_unetr import SwinUNETRCustom
-from models.segmentors.swin_unetr_official import SwinUNETR
-from models.segmentors.unetr import UNETRC
-from models.segmentors.unetr_official import UNETROC
 from models.segmentors.segformer_head import SegFormerHead
+from models.segmentors.segformer_head_official import SegFormerHeadOfficial
+from models.segmentors.swin_unetr import SwinUNETRCustom
 
 
 def build_model(cfg):
@@ -188,6 +183,22 @@ def build_model(cfg):
             use_abs_pos_emb=cfg.abs_pos_emb
         )
         model = SegFormerHead(
+            encoder=encoder,
+            in_channels=cfg.hidden_dim,
+            num_classes=cfg.output_dim
+        )
+    elif cfg.model == 'SegFormer3D':
+        encoder = MixVisionTransformer(
+            img_size=cfg.vol_size,
+            patch_size=cfg.patch_size,
+            in_chans=cfg.in_chans,
+            embed_dim=cfg.hidden_dim,
+            depths=cfg.depths,
+            num_heads=cfg.num_heads,
+            sr_ratios=[8, 4, 2, 1],
+            qkv_bias=cfg.qkv_bias
+        )
+        model = SegFormerHeadOfficial(
             encoder=encoder,
             in_channels=cfg.hidden_dim,
             num_classes=cfg.output_dim
