@@ -63,7 +63,7 @@ class SegFormerHeadOfficial(nn.Module):
         self.linear_pred = nn.Conv3d(embedding_dim, self.num_classes, kernel_size=1)
 
     def forward(self, inputs):
-        org_shape = inputs.size()[2:]
+        org_shape = inputs[0].size()[2:]
         x = self.encoder(inputs)
         _, c1, c2, c3, c4 = x
         ############## MLP decoder on C1-C4 ###########
